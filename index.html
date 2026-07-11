@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Поиск по базе аварийных остановов ГПА</title>
+<style>
+  :root{{
+    --navy:#1A365D; --navy-dark:#0F2440; --surface:#F7FAFC; --card:#FFFFFF;
+    --border:#DDE3EA; --text:#1F2933; --text-muted:#5C6B7A;
+    --teal:#0F6E56; --teal-bg:#E1F5EE; --coral:#993C1D; --coral-bg:#FAECE7;
+    --amber:#854F0B; --amber-bg:#FAEEDA;
+    --mono:"SF Mono","Consolas","Roboto Mono",monospace;
+    --sans:"Segoe UI",Inter,system-ui,-apple-system,Arial,sans-serif;
+  }}
+  *{{box-sizing:border-box;}}
+  body{{margin:0;background:var(--surface);color:var(--text);font-family:var(--sans);line-height:1.5;}}
+  header{{background:linear-gradient(180deg,var(--navy),var(--navy-dark));color:#fff;padding:28px 24px 22px;}}
+  header h1{{margin:0 0 4px;font-size:20px;font-weight:600;}}
+  header p{{margin:0;font-size:13px;color:#C9D6E5;}}
+  .container{{max-width:960px;margin:0 auto;padding:20px 20px 60px;}}
+  .toolbar{{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin:-18px 0 20px;box-shadow:0 2px 10px rgba(15,36,64,0.08);}}
+  .search-row{{display:flex;gap:10px;margin-bottom:12px;}}
+  .search-row input{{flex:1;padding:11px 14px;font-size:14px;border:1px solid var(--border);border-radius:8px;outline:none;font-family:var(--sans);}}
+  .search-row input:focus{{border-color:var(--navy);box-shadow:0 0 0 3px rgba(26,54,93,0.12);}}
+  .filters{{display:flex;gap:10px;flex-wrap:wrap;}}
+  .filters select{{padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--text);font-family:var(--sans);}}
+  .filters button{{padding:8px 14px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text-muted);cursor:pointer;}}
+  .filters button:hover{{background:#EDF1F5;}}
+  .meta-row{{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;font-size:13px;color:var(--text-muted);}}
+  .meta-row b{{color:var(--text);}}
+  .card{{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:12px;}}
+  .card-top{{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}}
+  .tag{{font-family:var(--mono);font-size:11.5px;padding:3px 8px;border-radius:5px;font-weight:600;letter-spacing:0.2px;}}
+  .tag.act{{background:#EDF1F5;color:var(--navy);}}
+  .tag.gpa{{background:var(--teal-bg);color:var(--teal);}}
+  .tag.cat{{background:var(--amber-bg);color:var(--amber);}}
+  .tag.type{{background:var(--coral-bg);color:var(--coral);}}
+  .card h3{{margin:0 0 6px;font-size:15.5px;font-weight:600;color:var(--text);}}
+  .card .cause{{font-size:13.5px;color:var(--text-muted);margin:0 0 8px;}}
+  mark{{background:#FFE9A8;color:#412402;padding:0 2px;border-radius:2px;}}
+  .details{{display:none;font-size:13px;margin-top:8px;padding-top:10px;border-top:1px dashed var(--border);}}
+  .details.open{{display:block;}}
+  .details p{{margin:0 0 8px;}}
+  .details b{{color:var(--text);}}
+  .toggle-btn{{font-size:12.5px;color:var(--navy);background:none;border:none;cursor:pointer;padding:0;font-weight:600;text-decoration:underline;}}
+  .empty{{text-align:center;color:var(--text-muted);padding:50px 10px;font-size:14px;}}
+  .empty div{{font-size:28px;margin-bottom:8px;}}
+  .src-note{{font-size:11px;color:#9AA5B1;text-align:center;margin-top:24px;}}
+  a.doc-link{{color:var(--navy);font-weight:600;text-decoration:underline;}}
+  .loading{{text-align:center;color:var(--text-muted);padding:60px 10px;}}
+  @media (max-width:600px){{.search-row{{flex-direction:column;}}}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Поиск по базе аварийных остановов ГПА</h1>
+  <p>Умная система анализа аварийных остановов и помощи инженерам &middot; КС-1 &laquo;Алимтау&raquo;</p>
+</header>
+<div class="container">
+  <div class="toolbar">
+    <div class="search-row">
+      <input id="q" type="text" placeholder="Например: свечной кран, потеря пламени, RB6-2, ГПА№2..." autocomplete="off" disabled>
+    </div>
+    <div class="filters">
+      <select id="fGpa" disabled><option value="">Все ГПА</option></select>
+      <select id="fCat" disabled><option value="">Все категории</option></select>
+      <select id="fYear" disabled><option value="">Все годы</option></select>
+      <button id="reset" type="button" disabled>Сбросить</button>
+    </div>
+  </div>
+  <div class="meta-row">
+    <span class="left" id="count"></span>
+    <span class="right">Сортировка по релевантности</span>
+  </div>
+  <div id="results"><div class="loading">Загрузка данных...</div></div>
+  <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — из папки acts/</div>
+</div>
+<script>
+var incidents = [];
+
+function uniqueSorted(arr) {{
+  var seen = {{}}, out = [];
+  for (var i = 0; i < arr.length; i++) {{ var v = arr[i]; if (!seen[v]) {{ seen[v] = true; out.push(v); }} }}
+  out.sort(); return out;
+}}
+function arrayContains(arr, val) {{ for (var i=0;i<arr.length;i++){{ if(arr[i]===val) return true; }} return false; }}
+function escapeHtml(s) {{ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }}
+function escapeRegExp(s) {{ return s.replace(/[.*+?^${{}}()|[\]\\]/g,'\\$&'); }}
+
+function initFilters() {{
+  var allGpa=[], allCat=[], allYear=[];
+  for (var i=0;i<incidents.length;i++) {{
+    var inc = incidents[i];
+    for (var j=0;j<inc.gpa.length;j++) {{ allGpa.push(inc.gpa[j]); }}
+    allCat.push(inc.category);
+    allYear.push(inc.date.slice(-4));
+  }}
+  fillSelect('fGpa', allGpa); fillSelect('fCat', allCat); fillSelect('fYear', allYear);
+  document.getElementById('q').disabled = false;
+  document.getElementById('fGpa').disabled = false;
+  document.getElementById('fCat').disabled = false;
+  document.getElementById('fYear').disabled = false;
+  document.getElementById('reset').disabled = false;
+}}
+function fillSelect(id, values) {{
+  var sel = document.getElementById(id);
+  var uniq = uniqueSorted(values);
+  for (var i=0;i<uniq.length;i++) {{
+    var o = document.createElement('option');
+    o.value = uniq[i]; o.textContent = uniq[i];
+    sel.appendChild(o);
+  }}
+}}
+
+function normalize(s) {{ return (s||'').toLowerCase().replace(/[«»"'.,()–—-]/g,' ').replace(/^\s+|\s+$/g,''); }}
+function tokenize(s) {{
+  var norm = normalize(s); if (norm==='') return [];
+  var parts = norm.split(/\s+/), out=[];
+  for (var i=0;i<parts.length;i++) {{ if (parts[i]!=='') out.push(parts[i]); }}
+  return out;
+}}
+var FIELD_WEIGHTS = [['name',3],['cause',2],['category',2],['act',1.5],['date',1.5],['gpaStr',1.5],['measures',1],['conclusion',1],['recommendation',1]];
+function scoreIncident(inc, tokens) {{
+  if (tokens.length===0) return 0.0001;
+  var fields = {{name:inc.name,cause:inc.cause,category:inc.category,act:inc.act,date:inc.date,gpaStr:inc.gpa.join(' '),measures:inc.measures,conclusion:inc.conclusion,recommendation:inc.recommendation}};
+  var score=0;
+  for (var t=0;t<tokens.length;t++) {{
+    var tok = tokens[t];
+    for (var f=0;f<FIELD_WEIGHTS.length;f++) {{
+      var fn=FIELD_WEIGHTS[f][0], w=FIELD_WEIGHTS[f][1];
+      var text = normalize(fields[fn]);
+      if (text.indexOf(tok)!==-1) score += w;
+    }}
+  }}
+  return score;
+}}
+function highlight(text, tokens) {{
+  var safe = escapeHtml(text);
+  if (!tokens.length) return safe;
+  for (var i=0;i<tokens.length;i++) {{
+    var tok = tokens[i]; if (tok.length<2) continue;
+    var re = new RegExp('('+escapeRegExp(tok)+')','ig');
+    safe = safe.replace(re, '<mark>$1</mark>');
+  }}
+  return safe;
+}}
+
+function render() {{
+  var q = document.getElementById('q').value;
+  var tokens = tokenize(q);
+  var fGpa = document.getElementById('fGpa').value;
+  var fCat = document.getElementById('fCat').value;
+  var fYear = document.getElementById('fYear').value;
+  var scored = [];
+  for (var i=0;i<incidents.length;i++) {{
+    var inc = incidents[i];
+    var score = scoreIncident(inc, tokens);
+    if (score<=0) continue;
+    if (fGpa && !arrayContains(inc.gpa, fGpa)) continue;
+    if (fCat && inc.category!==fCat) continue;
+    if (fYear && inc.date.slice(-4)!==fYear) continue;
+    scored.push({{inc:inc, score:score}});
+  }}
+  scored.sort(function(a,b){{ return b.score-a.score; }});
+  document.getElementById('count').innerHTML = 'Найдено: <b>'+scored.length+'</b> из '+incidents.length;
+  var box = document.getElementById('results');
+  box.innerHTML = '';
+  if (scored.length===0) {{
+    box.innerHTML = '<div class="empty"><div>&empty;</div>Ничего не найдено. Попробуйте другой запрос или сбросьте фильтры.</div>';
+    return;
+  }}
+  for (var s=0;s<scored.length;s++) {{
+    var inc = scored[s].inc;
+    var card = document.createElement('div');
+    card.className = 'card';
+    var gpaTags = '';
+    for (var g=0;g<inc.gpa.length;g++) {{ gpaTags += '<span class="tag gpa">'+escapeHtml(inc.gpa[g])+'</span>'; }}
+    var htmlStr = '';
+    htmlStr += '<div class="card-top">';
+    htmlStr += '<span class="tag act">'+escapeHtml(inc.act)+' &middot; '+escapeHtml(inc.date)+'</span>';
+    htmlStr += gpaTags;
+    htmlStr += '<span class="tag cat">'+highlight(inc.category, tokens)+'</span>';
+    htmlStr += '<span class="tag type">'+escapeHtml(inc.type)+'</span>';
+    htmlStr += '</div>';
+    htmlStr += '<h3>'+highlight(inc.name, tokens)+'</h3>';
+    htmlStr += '<p class="cause">'+highlight(inc.cause, tokens)+'</p>';
+    htmlStr += '<button class="toggle-btn" type="button">Показать меры и заключение &#9662;</button>';
+    htmlStr += '<div class="details">';
+    if (inc.measures) {{ htmlStr += '<p><b>Меры при останове:</b> '+highlight(inc.measures, tokens)+'</p>'; }}
+    if (inc.conclusion) {{ htmlStr += '<p><b>Заключение:</b> '+highlight(inc.conclusion, tokens)+'</p>'; }}
+    htmlStr += '<p><b>Принятые меры:</b> '+highlight(inc.recommendation, tokens)+'</p>';
+    if (inc.remediation && inc.remediation.length) {{
+      htmlStr += '<p><b>Работы по устранению:</b></p><ul style="margin:0 0 8px 18px;padding:0;">';
+      for (var w=0;w<inc.remediation.length;w++) {{
+        var wk = inc.remediation[w];
+        htmlStr += '<li>'+highlight(wk.work_description||'', tokens);
+        htmlStr += ' &mdash; Акт выполненных работ '+escapeHtml(wk.work_act||'?')+' от '+escapeHtml(wk.work_date||'?');
+        if (wk.work_source) {{
+          htmlStr += ' (<a class="doc-link" href="acts/'+encodeURIComponent(wk.work_source)+'" target="_blank">открыть акт</a>)';
+        }}
+        htmlStr += '</li>';
+      }}
+      htmlStr += '</ul>';
+    }}
+    var docLinks = [];
+    if (inc.source) {{ docLinks.push('<a class="doc-link" href="acts/'+encodeURIComponent(inc.source)+'" target="_blank">Открыть акт расследования</a>'); }}
+    if (inc.defect_source) {{ docLinks.push('<a class="doc-link" href="acts/'+encodeURIComponent(inc.defect_source)+'" target="_blank">Открыть дефектный акт</a>'); }}
+    if (inc.work_source) {{ docLinks.push('<a class="doc-link" href="acts/'+encodeURIComponent(inc.work_source)+'" target="_blank">Открыть акт выполненных работ</a>'); }}
+    if (docLinks.length) {{ htmlStr += '<p><b>Документы:</b> '+docLinks.join(' &middot; ')+'</p>'; }}
+    htmlStr += '</div>';
+    card.innerHTML = htmlStr;
+    (function(cardEl){{
+      var btn = cardEl.querySelector('.toggle-btn');
+      var det = cardEl.querySelector('.details');
+      btn.addEventListener('click', function(){{
+        var isOpen = det.className.indexOf('open')!==-1;
+        if (isOpen) {{ det.className='details'; btn.innerHTML='Показать меры и заключение &#9662;'; }}
+        else {{ det.className='details open'; btn.innerHTML='Скрыть детали &#9652;'; }}
+      }});
+    }})(card);
+    box.appendChild(card);
+  }}
+}}
+
+document.getElementById('q').addEventListener('input', render);
+document.getElementById('fGpa').addEventListener('change', render);
+document.getElementById('fCat').addEventListener('change', render);
+document.getElementById('fYear').addEventListener('change', render);
+document.getElementById('reset').addEventListener('click', function(){{
+  document.getElementById('q').value='';
+  document.getElementById('fGpa').value='';
+  document.getElementById('fCat').value='';
+  document.getElementById('fYear').value='';
+  render();
+}});
+
+Promise.all([
+  fetch('accidents.json').then(function(r){{ return r.json(); }}),
+  fetch('defects.json').then(function(r){{ return r.json(); }}).catch(function(){{ return []; }})
+]).then(function(results){{
+  var accidents = results[0], defects = results[1];
+  incidents = [];
+  for (var i=0;i<accidents.length;i++) {{
+    var a = accidents[i];
+    incidents.push({{
+      kind:'incident', act:a.act, date:a.date, time:a.time, gpa:a.gpa, type:a.type,
+      category:a.category, name:a.name, cause:a.cause, measures:a.measures,
+      conclusion:a.conclusion, recommendation:a.recommendation,
+      remediation:a.remediation||[], source:a.source
+    }});
+  }}
+  for (var j=0;j<defects.length;j++) {{
+    var d = defects[j];
+    var materialsTxt = '';
+    if (d.materials && d.materials.length) {{
+      var parts = [];
+      for (var m=0;m<d.materials.length;m++) {{
+        var mt = d.materials[m];
+        parts.push(mt.name+' ('+mt.part_no+') — '+mt.qty+' '+mt.unit);
+      }}
+      materialsTxt = ' Расходные материалы: '+parts.join('; ');
+    }}
+    incidents.push({{
+      kind:'defect', act:d.defect_act, date:d.defect_date, time:'', gpa:d.gpa||[],
+      type:'Дефект (без останова)', category:'Плановая инспекция / дефект',
+      name:d.title || (d.description||'').slice(0,80), cause:d.description,
+      measures:'', conclusion:'Статус: '+(d.status||''),
+      recommendation:(d.work_description||'')+materialsTxt, remediation:[],
+      defect_source:d.defect_source, work_source:d.work_source
+    }});
+  }}
+  initFilters();
+  render();
+}}).catch(function(err){{
+  document.getElementById('results').innerHTML =
+    '<div class="empty"><div>&#9888;</div>Не удалось загрузить accidents.json / defects.json.<br>'+
+    'Если вы открыли файл напрямую (file://) — это ожидаемо: браузеры блокируют fetch() для локальных файлов.<br>'+
+    'Разместите сайт на GitHub Pages (см. README) или запустите локальный сервер: <code>python3 -m http.server</code>'+
+    '</div>';
+  console.error(err);
+}});
+</script>
+</body>
+</html>
