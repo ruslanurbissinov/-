@@ -75,7 +75,7 @@
     <span class="right">Сортировка по релевантности</span>
   </div>
   <div id="results"><div class="loading">Загрузка данных...</div></div>
-  <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — из папки acts/</div>
+  <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория)</div>
 </div>
 <script>
 var incidents = [];
@@ -198,16 +198,16 @@ function render() {
         htmlStr += '<li>'+highlight(wk.work_description||'', tokens);
         htmlStr += ' &mdash; Акт выполненных работ '+escapeHtml(wk.work_act||'?')+' от '+escapeHtml(wk.work_date||'?');
         if (wk.work_source) {
-          htmlStr += ' (<a class="doc-link" href="acts/'+encodeURIComponent(wk.work_source)+'" target="_blank">открыть акт</a>)';
+          htmlStr += ' (<a class="doc-link" href="'+encodeURIComponent(wk.work_source)+'" target="_blank">открыть акт</a>)';
         }
         htmlStr += '</li>';
       }
       htmlStr += '</ul>';
     }
     var docLinks = [];
-    if (inc.source) { docLinks.push('<a class="doc-link" href="acts/'+encodeURIComponent(inc.source)+'" target="_blank">Открыть акт расследования</a>'); }
-    if (inc.defect_source) { docLinks.push('<a class="doc-link" href="acts/'+encodeURIComponent(inc.defect_source)+'" target="_blank">Открыть дефектный акт</a>'); }
-    if (inc.work_source) { docLinks.push('<a class="doc-link" href="acts/'+encodeURIComponent(inc.work_source)+'" target="_blank">Открыть акт выполненных работ</a>'); }
+    if (inc.source) { docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">Открыть акт расследования</a>'); }
+    if (inc.defect_source) { docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.defect_source)+'" target="_blank">Открыть дефектный акт</a>'); }
+    if (inc.work_source) { docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.work_source)+'" target="_blank">Открыть акт выполненных работ</a>'); }
     if (docLinks.length) { htmlStr += '<p><b>Документы:</b> '+docLinks.join(' &middot; ')+'</p>'; }
     htmlStr += '</div>';
     card.innerHTML = htmlStr;
