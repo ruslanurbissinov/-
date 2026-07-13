@@ -108,6 +108,11 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
   .gpa-check{{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;cursor:pointer;}}
   #analyzeBtn{{margin-top:4px;padding:10px 18px;font-size:14px;font-weight:600;border:none;border-radius:8px;background:var(--navy);color:#fff;cursor:pointer;font-family:var(--sans);}}
   #analyzeBtn:hover{{background:var(--navy-dark);}}
+  .file-row{{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:var(--surface);border:1px dashed var(--border);border-radius:8px;}}
+  .file-row label.file-btn{{font-size:13px;font-weight:600;color:var(--navy);background:#fff;border:1px solid var(--border);border-radius:7px;padding:7px 12px;cursor:pointer;}}
+  .file-row label.file-btn:hover{{background:#EDF1F5;}}
+  #fileStatus{{font-size:12.5px;color:var(--text-muted);}}
+  #fileStatus.error{{color:var(--coral);}}
   .tag.match{{background:#DCFCE7;color:#166534;}}
   @media (max-width:600px){{.search-row{{flex-direction:column;}} .mode-tabs{{flex-direction:column;}}}}
 </style>
@@ -144,6 +149,11 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="toolbar">
       <p class="report-hint">Опишите, что наблюдал инженер во время останова — сигналы, показания приборов, что происходило по шагам (как в п.6 акта технического расследования). Система найдёт похожие случаи из базы и покажет их вероятную причину и меры по устранению.</p>
       <textarea id="reportText" rows="5" placeholder="Например: При выходе ГПА№2 в режим холостого хода сработал сигнал L86VM_ALM, показания концевых выключателей свечного крана XV-4204 нестабильны..."></textarea>
+      <div class="file-row">
+        <label class="file-btn" for="reportFile">&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)</label>
+        <input id="reportFile" type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" style="display:none;">
+        <span id="fileStatus">Текст из файла будет добавлен в поле выше — можно дополнить или отредактировать перед анализом.</span>
+      </div>
       <div class="filters" id="reportGpaRow"><span class="gpa-check-label">Загрузка списка ГПА...</span></div>
       <button id="analyzeBtn" type="button">Найти похожие случаи</button>
     </div>
@@ -390,6 +400,94 @@ document.getElementById('reset').addEventListener('click', function(){{
   render();
 }});
 document.getElementById('analyzeBtn').addEventListener('click', analyzeReport);
+
+function loadScriptOnce(url, cb) {{
+  var key = '_loaded_' + url;
+  if (window[key]) {{ cb(); return; }}
+  var s = document.createElement('script');
+  s.src = url;
+  s.onload = function(){{ window[key] = true; cb(); }};
+  s.onerror = function(){{ cb(new Error('load-failed')); }};
+  document.head.appendChild(s);
+}}
+function setFileStatus(msg, isError) {{
+  var el = document.getElementById('fileStatus');
+  el.textContent = msg;
+  el.className = isError ? 'error' : '';
+}}
+function appendReportText(text) {{
+  var ta = document.getElementById('reportText');
+  var cleaned = (text || '').replace(/[ \\t]+/g, ' ').replace(/\\n{{3,}}/g, '\\n\\n').trim();
+  if (!cleaned) {{ setFileStatus('В файле не найдено текста для анализа.', true); return; }}
+  ta.value = (ta.value ? ta.value + '\\n\\n' : '') + cleaned;
+  setFileStatus('Текст из файла добавлен в поле выше. Проверьте и нажмите «Найти похожие случаи».');
+}}
+function handleReportFile(file) {{
+  if (!file) return;
+  var name = file.name.toLowerCase();
+  setFileStatus('Обработка файла «' + file.name + '»...');
+  if (name.endsWith('.txt')) {{
+    var r = new FileReader();
+    r.onload = function(){{ appendReportText(r.result); }};
+    r.onerror = function(){{ setFileStatus('Не удалось прочитать файл.', true); }};
+    r.readAsText(file);
+  }} else if (name.endsWith('.pdf')) {{
+    loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', function(err){{
+      if (err) {{ setFileStatus('Не удалось загрузить библиотеку для чтения PDF (нет сети?).', true); return; }}
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      var reader = new FileReader();
+      reader.onload = function(){{
+        var typedarray = new Uint8Array(reader.result);
+        window.pdfjsLib.getDocument({{data: typedarray}}).promise.then(function(pdf){{
+          var pagePromises = [];
+          for (var p = 1; p <= pdf.numPages; p++) {{
+            pagePromises.push(pdf.getPage(p).then(function(page){{
+              return page.getTextContent().then(function(tc){{
+                return tc.items.map(function(it){{ return it.str; }}).join(' ');
+              }});
+            }}));
+          }}
+          Promise.all(pagePromises).then(function(pagesText){{
+            var full = pagesText.join('\\n');
+            if (full.replace(/\\s+/g,'').length < 15) {{
+              setFileStatus('В PDF нет текстового слоя (это скан без OCR). Сохраните нужную страницу как фото (JPG/PNG) и загрузите её — сработает распознавание.', true);
+            }} else {{
+              appendReportText(full);
+            }}
+          }});
+        }}).catch(function(){{ setFileStatus('Не удалось разобрать PDF-файл.', true); }});
+      }};
+      reader.readAsArrayBuffer(file);
+    }});
+  }} else if (name.endsWith('.docx')) {{
+    loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.11.0/mammoth.browser.min.js', function(err){{
+      if (err) {{ setFileStatus('Не удалось загрузить библиотеку для чтения Word (нет сети?).', true); return; }}
+      var reader = new FileReader();
+      reader.onload = function(){{
+        window.mammoth.extractRawText({{arrayBuffer: reader.result}}).then(function(result){{
+          appendReportText(result.value);
+        }}).catch(function(){{ setFileStatus('Не удалось разобрать файл Word.', true); }});
+      }};
+      reader.readAsArrayBuffer(file);
+    }});
+  }} else if (name.match(/\\.(png|jpe?g)$/)) {{
+    setFileStatus('Распознаём текст на фото — это может занять минуту (загружается модель распознавания)...');
+    loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js', function(err){{
+      if (err) {{ setFileStatus('Не удалось загрузить библиотеку распознавания текста (нет сети?).', true); return; }}
+      window.Tesseract.createWorker('rus+eng').then(function(worker){{
+        worker.recognize(file).then(function(result){{
+          appendReportText(result.data.text);
+          worker.terminate();
+        }}).catch(function(){{ setFileStatus('Не удалось распознать текст на фото.', true); worker.terminate(); }});
+      }}).catch(function(){{ setFileStatus('Не удалось запустить распознавание текста.', true); }});
+    }});
+  }} else {{
+    setFileStatus('Формат не поддерживается. Загрузите PDF, DOCX, TXT, JPG или PNG.', true);
+  }}
+}}
+document.getElementById('reportFile').addEventListener('change', function(e){{
+  handleReportFile(e.target.files[0]);
+}});
 document.getElementById('tabSearch').addEventListener('click', function(){{
   document.getElementById('tabSearch').className = 'mode-tab active';
   document.getElementById('tabReport').className = 'mode-tab';
