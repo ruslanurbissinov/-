@@ -188,7 +188,7 @@ function render() {
     htmlStr += '<p class="cause">'+highlight(inc.cause, tokens)+'</p>';
     htmlStr += '<button class="toggle-btn" type="button">Показать меры и заключение &#9662;</button>';
     htmlStr += '<div class="details">';
-    if (inc.measures) { htmlStr += '<p><b>Меры при останове:</b> '+highlight(inc.measures, tokens)+'</p>'; }
+    if (inc.measures) { htmlStr += '<p><b>Обстоятельства, при которых произошел останов:</b> '+highlight(inc.measures, tokens)+'</p>'; }
     if (inc.conclusion) { htmlStr += '<p><b>Заключение:</b> '+highlight(inc.conclusion, tokens)+'</p>'; }
     var principalMeasures = '';
     if (inc.remediation && inc.remediation.length) {
