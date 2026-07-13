@@ -232,6 +232,13 @@ function buildCard(inc, tokens, scoreBadge) {
   return card;
 }
 
+function tokenCoverage(inc, tokens) {
+  if (!tokens.length) return 1;
+  var text = normalize([inc.name, inc.cause, inc.category, inc.gpa.join(' '), inc.measures, inc.conclusion, inc.recommendation].join(' '));
+  var matched = 0;
+  for (var i=0;i<tokens.length;i++) { if (text.indexOf(tokens[i])!==-1) { matched++; } }
+  return matched / tokens.length;
+}
 function render() {
   var q = document.getElementById('q').value;
   var tokens = tokenize(q);
@@ -246,18 +253,21 @@ function render() {
     if (fGpa && !arrayContains(inc.gpa, fGpa)) continue;
     if (fCat && inc.category!==fCat) continue;
     if (fYear && inc.date.slice(-4)!==fYear) continue;
-    scored.push({inc:inc, score:score});
+    var pct = tokenCoverage(inc, tokens);
+    if (tokens.length && pct < 0.5) continue;
+    scored.push({inc:inc, score:score, pct:pct});
   }
-  scored.sort(function(a,b){ return b.score-a.score; });
-  document.getElementById('count').innerHTML = 'Найдено: <b>'+scored.length+'</b> из '+incidents.length;
+  scored.sort(function(a,b){ if (b.pct!==a.pct) { return b.pct-a.pct; } return b.score-a.score; });
+  document.getElementById('count').innerHTML = 'Найдено: <b>'+scored.length+'</b> из '+incidents.length+(tokens.length?' (схожесть от 100% до 50%)':'');
   var box = document.getElementById('results');
   box.innerHTML = '';
   if (scored.length===0) {
-    box.innerHTML = '<div class="empty"><div>&empty;</div>Ничего не найдено. Попробуйте другой запрос или сбросьте фильтры.</div>';
+    box.innerHTML = '<div class="empty"><div>&empty;</div>Ничего не найдено с совпадением 50% и выше. Попробуйте другой запрос или сбросьте фильтры.</div>';
     return;
   }
   for (var s=0;s<scored.length;s++) {
-    box.appendChild(buildCard(scored[s].inc, tokens, null));
+    var badge = tokens.length ? ('Схожесть '+Math.round(100*scored[s].pct)+'%') : null;
+    box.appendChild(buildCard(scored[s].inc, tokens, badge));
   }
 }
 
