@@ -337,7 +337,7 @@ function ocrPdfPages(pdf) {{
   setFileStatus('В PDF нет текстового слоя (это скан) — распознаём как изображение, страниц: ' + maxPages + '. Это может занять пару минут при первой загрузке...');
   loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js', function(err){{
     if (err) {{ setFileStatus('Не удалось загрузить библиотеку распознавания текста (нет сети?).', true); return; }}
-    window.Tesseract.createWorker('rus+eng').then(function(worker){{
+    window.Tesseract.createWorker(['rus','eng']).then(function(worker){{
       var allText = [];
       function processPage(p) {{
         if (p > maxPages) {{
@@ -361,10 +361,11 @@ function ocrPdfPages(pdf) {{
         }}).catch(function(){{ processPage(p + 1); }});
       }}
       processPage(1);
-    }}).catch(function(){{ setFileStatus('Не удалось запустить распознавание текста.', true); }});
+    }}).catch(function(e){{ setFileStatus('Не удалось запустить распознавание текста: ' + e.message, true); }});
   }});
 }}
 function handleReportFile(file) {{
+  try {{
   if (!file) return;
   var name = file.name.toLowerCase();
   setFileStatus('Обработка файла «' + file.name + '»...');
@@ -376,11 +377,14 @@ function handleReportFile(file) {{
   }} else if (name.endsWith('.pdf')) {{
     loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', function(err){{
       if (err) {{ setFileStatus('Не удалось загрузить библиотеку для чтения PDF (нет сети?).', true); return; }}
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      var pdfjsLib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
+      if (!pdfjsLib) {{ setFileStatus('Библиотека для чтения PDF загрузилась некорректно. Обновите страницу и попробуйте снова.', true); return; }}
+      window.pdfjsLib = pdfjsLib;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
       var reader = new FileReader();
       reader.onload = function(){{
         var typedarray = new Uint8Array(reader.result);
-        window.pdfjsLib.getDocument({{data: typedarray}}).promise.then(function(pdf){{
+        pdfjsLib.getDocument({{data: typedarray}}).promise.then(function(pdf){{
           var pagePromises = [];
           for (var p = 1; p <= pdf.numPages; p++) {{
             pagePromises.push(pdf.getPage(p).then(function(page){{
@@ -396,9 +400,10 @@ function handleReportFile(file) {{
             }} else {{
               appendReportText(full);
             }}
-          }});
-        }}).catch(function(){{ setFileStatus('Не удалось разобрать PDF-файл.', true); }});
+          }}).catch(function(e){{ setFileStatus('Не удалось прочитать текст со страниц PDF: ' + e.message, true); }});
+        }}).catch(function(e){{ setFileStatus('Не удалось разобрать PDF-файл: ' + e.message, true); }});
       }};
+      reader.onerror = function(){{ setFileStatus('Не удалось прочитать файл с диска.', true); }};
       reader.readAsArrayBuffer(file);
     }});
   }} else if (name.endsWith('.docx')) {{
@@ -408,23 +413,27 @@ function handleReportFile(file) {{
       reader.onload = function(){{
         window.mammoth.extractRawText({{arrayBuffer: reader.result}}).then(function(result){{
           appendReportText(result.value);
-        }}).catch(function(){{ setFileStatus('Не удалось разобрать файл Word.', true); }});
+        }}).catch(function(e){{ setFileStatus('Не удалось разобрать файл Word: ' + e.message, true); }});
       }};
+      reader.onerror = function(){{ setFileStatus('Не удалось прочитать файл с диска.', true); }};
       reader.readAsArrayBuffer(file);
     }});
   }} else if (name.match(/\\.(png|jpe?g)$/)) {{
     setFileStatus('Распознаём текст на фото — это может занять минуту (загружается модель распознавания)...');
     loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js', function(err){{
       if (err) {{ setFileStatus('Не удалось загрузить библиотеку распознавания текста (нет сети?).', true); return; }}
-      window.Tesseract.createWorker('rus+eng').then(function(worker){{
+      window.Tesseract.createWorker(['rus','eng']).then(function(worker){{
         worker.recognize(file).then(function(result){{
           appendReportText(result.data.text);
           worker.terminate();
-        }}).catch(function(){{ setFileStatus('Не удалось распознать текст на фото.', true); worker.terminate(); }});
-      }}).catch(function(){{ setFileStatus('Не удалось запустить распознавание текста.', true); }});
+        }}).catch(function(e){{ setFileStatus('Не удалось распознать текст на фото: ' + e.message, true); worker.terminate(); }});
+      }}).catch(function(e){{ setFileStatus('Не удалось запустить распознавание текста: ' + e.message, true); }});
     }});
   }} else {{
     setFileStatus('Формат не поддерживается. Загрузите PDF, DOCX, TXT, JPG или PNG.', true);
+  }}
+  }} catch (e) {{
+    setFileStatus('Непредвиденная ошибка при обработке файла: ' + e.message, true);
   }}
 }}
 document.getElementById('reportFile').addEventListener('change', function(e){{
