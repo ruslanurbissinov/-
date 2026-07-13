@@ -190,22 +190,28 @@ function render() {
     htmlStr += '<div class="details">';
     if (inc.measures) { htmlStr += '<p><b>Меры при останове:</b> '+highlight(inc.measures, tokens)+'</p>'; }
     if (inc.conclusion) { htmlStr += '<p><b>Заключение:</b> '+highlight(inc.conclusion, tokens)+'</p>'; }
-    htmlStr += '<p><b>Принятые меры:</b> '+highlight(inc.recommendation, tokens)+'</p>';
+    var principalMeasures = '';
     if (inc.remediation && inc.remediation.length) {
-      htmlStr += '<p><b>Работы по устранению:</b></p><ul style="margin:0 0 8px 18px;padding:0;">';
+      var pmParts = [];
       for (var w=0;w<inc.remediation.length;w++) {
         var wk = inc.remediation[w];
-        htmlStr += '<li>'+highlight(wk.work_description||'', tokens);
-        htmlStr += ' &mdash; Акт выполненных работ '+escapeHtml(wk.work_act||'?')+' от '+escapeHtml(wk.work_date||'?');
-        if (wk.work_source) {
-          htmlStr += ' (<a class="doc-link" href="'+encodeURIComponent(wk.work_source)+'" target="_blank">открыть акт</a>)';
-        }
-        htmlStr += '</li>';
+        pmParts.push((wk.work_description||'')+' — Акт выполненных работ '+(wk.work_act||'?')+' от '+(wk.work_date||'?')+' ('+(wk.status||'выполнено')+')');
       }
-      htmlStr += '</ul>';
+      principalMeasures = pmParts.join('<br>');
+    } else {
+      principalMeasures = inc.measures || '—';
     }
+    htmlStr += '<p><b>Принятые меры:</b> '+highlight(principalMeasures, tokens)+'</p>';
     var docLinks = [];
     if (inc.source) { docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">Открыть акт расследования</a>'); }
+    if (inc.remediation && inc.remediation.length) {
+      for (var w2=0;w2<inc.remediation.length;w2++) {
+        var wk2 = inc.remediation[w2];
+        if (wk2.work_source) {
+          docLinks.push('<a class="doc-link" href="'+encodeURIComponent(wk2.work_source)+'" target="_blank">Открыть акт выполненных работ</a>');
+        }
+      }
+    }
     if (inc.defect_source) { docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.defect_source)+'" target="_blank">Открыть дефектный акт</a>'); }
     if (inc.work_source) { docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.work_source)+'" target="_blank">Открыть акт выполненных работ</a>'); }
     if (docLinks.length) { htmlStr += '<p><b>Документы:</b> '+docLinks.join(' &middot; ')+'</p>'; }
