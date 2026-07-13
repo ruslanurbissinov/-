@@ -422,6 +422,38 @@ function appendReportText(text) {{
   ta.value = (ta.value ? ta.value + '\\n\\n' : '') + cleaned;
   setFileStatus('Текст из файла добавлен в поле выше. Проверьте и нажмите «Найти похожие случаи».');
 }}
+function ocrPdfPages(pdf) {{
+  var maxPages = Math.min(pdf.numPages, 5);
+  setFileStatus('В PDF нет текстового слоя (это скан) — распознаём как изображение, страниц: ' + maxPages + '. Это может занять пару минут при первой загрузке...');
+  loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js', function(err){{
+    if (err) {{ setFileStatus('Не удалось загрузить библиотеку распознавания текста (нет сети?).', true); return; }}
+    window.Tesseract.createWorker('rus+eng').then(function(worker){{
+      var allText = [];
+      function processPage(p) {{
+        if (p > maxPages) {{
+          worker.terminate();
+          appendReportText(allText.join('\\n'));
+          return;
+        }}
+        setFileStatus('Распознаём страницу ' + p + ' из ' + maxPages + '...');
+        pdf.getPage(p).then(function(page){{
+          var viewport = page.getViewport({{scale: 2}});
+          var canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          var ctx = canvas.getContext('2d');
+          page.render({{canvasContext: ctx, viewport: viewport}}).promise.then(function(){{
+            worker.recognize(canvas).then(function(result){{
+              allText.push(result.data.text);
+              processPage(p + 1);
+            }}).catch(function(){{ processPage(p + 1); }});
+          }}).catch(function(){{ processPage(p + 1); }});
+        }}).catch(function(){{ processPage(p + 1); }});
+      }}
+      processPage(1);
+    }}).catch(function(){{ setFileStatus('Не удалось запустить распознавание текста.', true); }});
+  }});
+}}
 function handleReportFile(file) {{
   if (!file) return;
   var name = file.name.toLowerCase();
@@ -450,7 +482,7 @@ function handleReportFile(file) {{
           Promise.all(pagePromises).then(function(pagesText){{
             var full = pagesText.join('\\n');
             if (full.replace(/\\s+/g,'').length < 15) {{
-              setFileStatus('В PDF нет текстового слоя (это скан без OCR). Сохраните нужную страницу как фото (JPG/PNG) и загрузите её — сработает распознавание.', true);
+              ocrPdfPages(pdf);
             }} else {{
               appendReportText(full);
             }}
