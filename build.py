@@ -170,7 +170,14 @@ function fillSelect(id, values) {{
   }}
 }}
 
-function normalize(s) {{ return (s||'').toLowerCase().replace(/[«»"'.,()–—-]/g,' ').replace(/^\\s+|\\s+$/g,''); }}
+function normalize(s) {{
+  var t = (s||'').toLowerCase();
+  t = t.replace(/\\b([a-zа-я]{{1,4}})[\\s-]+(\\d+)/gi,'$1$2');
+  t = t.replace(/(\\d)[\\s-]+([a-zа-я]{{1,4}}\\d+)/gi,'$1$2');
+  t = t.replace(/[«»"'.,()–—]/g,' ');
+  t = t.replace(/-/g,'');
+  return t.replace(/^\\s+|\\s+$/g,'');
+}}
 var STOPWORDS = {{'и':1,'в':1,'на':1,'с':1,'по':1,'для':1,'из':1,'к':1,'от':1,'о':1,'об':1,'что':1,'это':1,'как':1,'при':1,'до':1,'за':1,'не':1,'или':1,'а':1,'но':1,'же':1,'то':1,'его':1,'её':1,'их':1,'был':1,'было':1,'были':1,'есть':1,'также':1,'более':1,'менее':1,'фио':1,'подпись':1,'дата':1,'фамилия':1,'имя':1,'отчество':1,'наименование':1,'должность':1,'инженер':1,'инженера':1,'инженеру':1,'начальник':1,'начальника':1,'служба':1,'службы':1,'службу':1,'главный':1,'главного':1,'заместитель':1,'заместителя':1,'ведущий':1,'ведущего':1,'сменный':1,'сменного':1,'шымкент':1,'алимтау':1,'утг':1,'ктг':1,'приложение':1,'attachment':1,'name':1,'signature':1,'date':1,'engineer':1,'head':1,'chief':1,'deputy':1,'service':1,'leading':1,'shift':1,'the':1,'and':1,'of':1,'to':1,'in':1,'for':1,'is':1,'are':1,'акт':1,'акта':1,'акту':1}};
 function tokenize(s) {{
   var norm = normalize(s); if (norm==='') return [];
@@ -185,17 +192,22 @@ function tokenize(s) {{
   }}
   return out;
 }}
+function isTagToken(t) {{
+  return t.length>=3 && /[0-9]/.test(t) && /[a-zа-я]/i.test(t);
+}}
 var FIELD_WEIGHTS = [['name',3],['cause',2],['category',2],['act',1.5],['date',1.5],['gpaStr',1.5],['measures',1],['conclusion',1],['recommendation',1]];
+var TAG_BOOST = 6;
 function scoreIncident(inc, tokens) {{
   if (tokens.length===0) return 0.0001;
   var fields = {{name:inc.name,cause:inc.cause,category:inc.category,act:inc.act,date:inc.date,gpaStr:inc.gpa.join(' '),measures:inc.measures,conclusion:inc.conclusion,recommendation:inc.recommendation}};
   var score=0;
   for (var t=0;t<tokens.length;t++) {{
     var tok = tokens[t];
+    var boost = isTagToken(tok) ? TAG_BOOST : 1;
     for (var f=0;f<FIELD_WEIGHTS.length;f++) {{
       var fn=FIELD_WEIGHTS[f][0], w=FIELD_WEIGHTS[f][1];
       var text = normalize(fields[fn]);
-      if (text.indexOf(tok)!==-1) score += w;
+      if (text.indexOf(tok)!==-1) score += w*boost;
     }}
   }}
   return score;
@@ -225,7 +237,7 @@ function buildCard(inc, tokens, scoreBadge) {{
   if (scoreBadge) {{ htmlStr += '<span class="tag match">'+escapeHtml(scoreBadge)+'</span>'; }}
   htmlStr += '</div>';
   htmlStr += '<h3>'+highlight(inc.name, tokens)+'</h3>';
-  htmlStr += '<p class="cause">'+highlight(inc.cause, tokens)+'</p>';
+  htmlStr += '<p class="cause"><b>Обстоятельства, при которых произошел останов:</b> '+highlight(inc.cause, tokens)+'</p>';
   htmlStr += '<button class="toggle-btn" type="button">Показать меры и заключение &#9662;</button>';
   htmlStr += '<div class="details">';
   if (inc.conclusion) {{ htmlStr += '<p><b>Заключение:</b> '+highlight(inc.conclusion, tokens)+'</p>'; }}
@@ -713,7 +725,7 @@ def build_xlsx(incidents, defects):
     header_cell(ws4['A1'], 'ДЕТАЛИЗАЦИЯ ИНЦИДЕНТОВ ПО АКТАМ ТЕХНИЧЕСКОГО РАССЛЕДОВАНИЯ', size=13)
     ws4.row_dimensions[1].height = 26
     headers4 = ['№ Акта', 'Дата', 'Время', 'ГПА', 'Тип останова', 'Категория причины',
-                'Причина (описание)', 'Меры при останове', 'Заключение / Принятые меры']
+                'Обстоятельства, при которых произошел останов (п.6)', 'Меры при останове', 'Заключение / Принятые меры']
     for i, h in enumerate(headers4, start=1):
         header_cell(ws4.cell(row=3, column=i), h, size=10, fill=GREY, color='FF2D3748')
 
@@ -1031,7 +1043,14 @@ fillSelect('fGpa', allGpa);
 fillSelect('fCat', allCat);
 fillSelect('fYear', allYear);
 
-function normalize(s) {{ return (s || '').toLowerCase().replace(/[«»"'.,()–—-]/g, ' ').replace(/^\\s+|\\s+$/g, ''); }}
+function normalize(s) {{
+  var t = (s || '').toLowerCase();
+  t = t.replace(/\\b([a-zа-я]{{1,4}})[\\s-]+(\\d+)/gi,'$1$2');
+  t = t.replace(/(\\d)[\\s-]+([a-zа-я]{{1,4}}\\d+)/gi,'$1$2');
+  t = t.replace(/[«»"'.,()–—]/g, ' ');
+  t = t.replace(/-/g,'');
+  return t.replace(/^\\s+|\\s+$/g, '');
+}}
 function tokenize(s) {{
   var norm = normalize(s);
   if (norm === '') return [];
@@ -1040,8 +1059,10 @@ function tokenize(s) {{
   for (var i = 0; i < parts.length; i++) {{ if (parts[i] !== '') out.push(parts[i]); }}
   return out;
 }}
+function isTagToken(t) {{ return t.length>=3 && /[0-9]/.test(t) && /[a-zа-я]/i.test(t); }}
 
 var FIELD_WEIGHTS = [['name', 3], ['cause', 2], ['category', 2], ['act', 1.5], ['date', 1.5], ['gpaStr', 1.5], ['measures', 1], ['conclusion', 1], ['recommendation', 1]];
+var TAG_BOOST = 6;
 
 function scoreIncident(inc, tokens) {{
   if (tokens.length === 0) return 0.0001;
@@ -1049,10 +1070,11 @@ function scoreIncident(inc, tokens) {{
   var score = 0;
   for (var t = 0; t < tokens.length; t++) {{
     var tok = tokens[t];
+    var boost = isTagToken(tok) ? TAG_BOOST : 1;
     for (var f = 0; f < FIELD_WEIGHTS.length; f++) {{
       var fieldName = FIELD_WEIGHTS[f][0], weight = FIELD_WEIGHTS[f][1];
       var text = normalize(fields[fieldName]);
-      if (text.indexOf(tok) !== -1) score += weight;
+      if (text.indexOf(tok) !== -1) score += weight*boost;
     }}
   }}
   return score;
@@ -1112,7 +1134,7 @@ function render() {{
     htmlStr += '<span class="tag type">' + escapeHtml(inc.type) + '</span>';
     htmlStr += '</div>';
     htmlStr += '<h3>' + highlight(inc.name, tokens) + '</h3>';
-    htmlStr += '<p class="cause">' + highlight(inc.cause, tokens) + '</p>';
+    htmlStr += '<p class="cause"><b>Обстоятельства, при которых произошел останов:</b> ' + highlight(inc.cause, tokens) + '</p>';
     htmlStr += '<button class="toggle-btn" type="button">Показать меры и заключение &#9662;</button>';
     htmlStr += '<div class="details">';
     htmlStr += '<p><b>Заключение:</b> ' + highlight(inc.conclusion, tokens) + '</p>';
