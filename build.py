@@ -196,7 +196,7 @@ function isTagToken(t) {{
   return t.length>=3 && /[0-9]/.test(t) && /[a-zа-я]/i.test(t);
 }}
 var FIELD_WEIGHTS = [['name',3],['cause',2],['category',2],['act',1.5],['date',1.5],['gpaStr',1.5],['measures',1],['conclusion',1],['recommendation',1]];
-var TAG_BOOST = 6;
+var TAG_BOOST = 9;
 function scoreIncident(inc, tokens) {{
   if (tokens.length===0) return 0.0001;
   var fields = {{name:inc.name,cause:inc.cause,category:inc.category,act:inc.act,date:inc.date,gpaStr:inc.gpa.join(' '),measures:inc.measures,conclusion:inc.conclusion,recommendation:inc.recommendation}};
@@ -354,8 +354,16 @@ function appendReportText(text) {{
   render();
   setFileStatus('Готово — показаны похожие случаи по содержимому файла. Можно уточнить запрос в поле поиска.');
 }}
+function looksGarbled(text) {{
+  var norm = normalize(text);
+  var raw = norm.split(/\\s+/);
+  var commonRu = {{'и':1,'в':1,'на':1,'что':1,'как':1,'при':1,'для':1,'это':1,'по':1,'из':1,'от':1,'до':1,'не':1,'к':1,'с':1,'о':1,'об':1,'же':1,'то':1,'акт':1,'года':1}};
+  var found = 0;
+  for (var i=0;i<raw.length;i++) {{ if (commonRu[raw[i]]) {{ found++; }} }}
+  return raw.length > 15 && found < 2;
+}}
 function ocrPdfPages(pdf) {{
-  var maxPages = Math.min(pdf.numPages, 5);
+  var maxPages = Math.min(pdf.numPages, 8);
   setFileStatus('В PDF нет текстового слоя (это скан) — распознаём как изображение, страниц: ' + maxPages + '. Это может занять пару минут при первой загрузке...');
   loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js', function(err){{
     if (err) {{ setFileStatus('Не удалось загрузить библиотеку распознавания текста (нет сети?).', true); return; }}
@@ -417,7 +425,7 @@ function handleReportFile(file) {{
           }}
           Promise.all(pagePromises).then(function(pagesText){{
             var full = pagesText.join('\\n');
-            if (full.replace(/\\s+/g,'').length < 15) {{
+            if (full.replace(/\\s+/g,'').length < 15 || looksGarbled(full)) {{
               ocrPdfPages(pdf);
             }} else {{
               appendReportText(full);
@@ -1072,7 +1080,7 @@ function tokenize(s) {{
 function isTagToken(t) {{ return t.length>=3 && /[0-9]/.test(t) && /[a-zа-я]/i.test(t); }}
 
 var FIELD_WEIGHTS = [['name', 3], ['cause', 2], ['category', 2], ['act', 1.5], ['date', 1.5], ['gpaStr', 1.5], ['measures', 1], ['conclusion', 1], ['recommendation', 1]];
-var TAG_BOOST = 6;
+var TAG_BOOST = 9;
 
 function scoreIncident(inc, tokens) {{
   if (tokens.length === 0) return 0.0001;
