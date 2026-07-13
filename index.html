@@ -50,23 +50,12 @@
   .src-note{font-size:11px;color:#9AA5B1;text-align:center;margin-top:24px;}
   a.doc-link{color:var(--navy);font-weight:600;text-decoration:underline;}
   .loading{text-align:center;color:var(--text-muted);padding:60px 10px;}
-  .mode-tabs{display:flex;gap:8px;margin:-6px 0 14px;}
-  .mode-tab{flex:1;padding:10px 14px;font-size:13.5px;font-weight:600;border:1px solid var(--border);background:var(--card);color:var(--text-muted);border-radius:8px;cursor:pointer;font-family:var(--sans);}
-  .mode-tab.active{background:var(--navy);color:#fff;border-color:var(--navy);}
-  .report-hint{font-size:13px;color:var(--text-muted);margin:0 0 12px;}
-  #reportText{width:100%;padding:11px 14px;font-size:14px;border:1px solid var(--border);border-radius:8px;outline:none;font-family:var(--sans);resize:vertical;margin-bottom:12px;}
-  #reportText:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(26,54,93,0.12);}
-  .gpa-check-label{font-size:13px;color:var(--text-muted);margin-right:4px;align-self:center;}
-  .gpa-check{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;cursor:pointer;}
-  #analyzeBtn{margin-top:4px;padding:10px 18px;font-size:14px;font-weight:600;border:none;border-radius:8px;background:var(--navy);color:#fff;cursor:pointer;font-family:var(--sans);}
-  #analyzeBtn:hover{background:var(--navy-dark);}
-  .file-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:var(--surface);border:1px dashed var(--border);border-radius:8px;}
-  .file-row label.file-btn{font-size:13px;font-weight:600;color:var(--navy);background:#fff;border:1px solid var(--border);border-radius:7px;padding:7px 12px;cursor:pointer;}
-  .file-row label.file-btn:hover{background:#EDF1F5;}
-  #fileStatus{font-size:12.5px;color:var(--text-muted);}
+  .file-btn{font-size:13px;font-weight:600;color:var(--navy);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 14px;cursor:pointer;display:inline-block;}
+  .file-btn:hover{background:#EDF1F5;}
+  #fileStatus{font-size:12.5px;color:var(--text-muted);flex-basis:100%;margin-top:8px;}
   #fileStatus.error{color:var(--coral);}
   .tag.match{background:#DCFCE7;color:#166534;}
-  @media (max-width:600px){.search-row{flex-direction:column;} .mode-tabs{flex-direction:column;}}
+  @media (max-width:600px){.search-row{flex-direction:column;}}
 </style>
 </head>
 <body>
@@ -75,42 +64,25 @@
   <p>Умная система анализа аварийных остановов и помощи инженерам &middot; КС-1 &laquo;Алимтау&raquo;</p>
 </header>
 <div class="container">
-  <div class="mode-tabs">
-    <button id="tabSearch" class="mode-tab active" type="button">Поиск по базе</button>
-    <button id="tabReport" class="mode-tab" type="button">Новое донесение — анализ</button>
-  </div>
-  <div id="searchMode">
-    <div class="toolbar">
-      <div class="search-row">
-        <input id="q" type="text" placeholder="Например: свечной кран, потеря пламени, RB6-2, ГПА№2..." autocomplete="off" disabled>
-      </div>
-      <div class="filters">
-        <select id="fGpa" disabled><option value="">Все ГПА</option></select>
-        <select id="fCat" disabled><option value="">Все категории</option></select>
-        <select id="fYear" disabled><option value="">Все годы</option></select>
-        <button id="reset" type="button" disabled>Сбросить</button>
-      </div>
+  <div class="toolbar">
+    <div class="search-row">
+      <input id="q" type="text" placeholder="Например: свечной кран, потеря пламени, RB6-2, ГПА№2..." autocomplete="off" disabled>
     </div>
-    <div class="meta-row">
-      <span class="left" id="count"></span>
-      <span class="right">Сортировка по релевантности</span>
+    <div class="filters">
+      <select id="fGpa" disabled><option value="">Все ГПА</option></select>
+      <select id="fCat" disabled><option value="">Все категории</option></select>
+      <select id="fYear" disabled><option value="">Все годы</option></select>
+      <button id="reset" type="button" disabled>Сбросить</button>
+      <label class="file-btn" for="reportFile">&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)</label>
+      <input id="reportFile" type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" style="display:none;">
+      <span id="fileStatus"></span>
     </div>
-    <div id="results"><div class="loading">Загрузка данных...</div></div>
   </div>
-  <div id="reportMode" style="display:none;">
-    <div class="toolbar">
-      <p class="report-hint">Опишите, что наблюдал инженер во время останова — сигналы, показания приборов, что происходило по шагам (как в п.6 акта технического расследования). Система найдёт похожие случаи из базы и покажет их вероятную причину и меры по устранению.</p>
-      <textarea id="reportText" rows="5" placeholder="Например: При выходе ГПА№2 в режим холостого хода сработал сигнал L86VM_ALM, показания концевых выключателей свечного крана XV-4204 нестабильны..."></textarea>
-      <div class="file-row">
-        <label class="file-btn" for="reportFile">&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)</label>
-        <input id="reportFile" type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" style="display:none;">
-        <span id="fileStatus">Текст из файла будет добавлен в поле выше — можно дополнить или отредактировать перед анализом.</span>
-      </div>
-      <div class="filters" id="reportGpaRow"><span class="gpa-check-label">Загрузка списка ГПА...</span></div>
-      <button id="analyzeBtn" type="button">Найти похожие случаи</button>
-    </div>
-    <div id="reportResults"></div>
+  <div class="meta-row">
+    <span class="left" id="count"></span>
+    <span class="right">Сортировка по релевантности</span>
   </div>
+  <div id="results"><div class="loading">Загрузка данных...</div></div>
   <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория)</div>
 </div>
 <script>
@@ -277,83 +249,6 @@ function render() {
   }
 }
 
-var REPORT_GPA_SELECTED = [];
-function toggleReportGpa(val, checked) {
-  var idx = REPORT_GPA_SELECTED.indexOf(val);
-  if (checked && idx===-1) { REPORT_GPA_SELECTED.push(val); }
-  if (!checked && idx!==-1) { REPORT_GPA_SELECTED.splice(idx,1); }
-}
-function buildReportGpaRow() {
-  var allGpa = [];
-  for (var i=0;i<incidents.length;i++) {
-    for (var j=0;j<incidents[i].gpa.length;j++) {
-      if (allGpa.indexOf(incidents[i].gpa[j])===-1) { allGpa.push(incidents[i].gpa[j]); }
-    }
-  }
-  allGpa.sort();
-  var row = document.getElementById('reportGpaRow');
-  row.innerHTML = '';
-  var lbl = document.createElement('span');
-  lbl.className = 'gpa-check-label';
-  lbl.textContent = 'Какой ГПА (опционально):';
-  row.appendChild(lbl);
-  for (var g=0; g<allGpa.length; g++) {
-    var val = allGpa[g];
-    var wrap = document.createElement('label');
-    wrap.className = 'gpa-check';
-    var cb = document.createElement('input');
-    cb.type = 'checkbox'; cb.value = val;
-    cb.addEventListener('change', function(e){ toggleReportGpa(e.target.value, e.target.checked); });
-    wrap.appendChild(cb);
-    wrap.appendChild(document.createTextNode(' '+val));
-    row.appendChild(wrap);
-  }
-}
-
-function tokenCoverage(inc, tokens) {
-  if (!tokens.length) return 0;
-  var text = normalize([inc.name, inc.cause, inc.category, inc.gpa.join(' '), inc.measures, inc.conclusion].join(' '));
-  var matched = 0;
-  for (var i=0;i<tokens.length;i++) { if (text.indexOf(tokens[i])!==-1) { matched++; } }
-  return matched / tokens.length;
-}
-function analyzeReport() {
-  var text = document.getElementById('reportText').value;
-  var tokens = tokenize(text);
-  var box = document.getElementById('reportResults');
-  box.innerHTML = '';
-  if (tokens.length===0) {
-    box.innerHTML = '<div class="empty"><div>&empty;</div>Опишите обстоятельства останова текстом — чем подробнее (сигналы, показания приборов, номер ГПА), тем точнее подбор похожих случаев.</div>';
-    return;
-  }
-  var scored = [];
-  for (var i=0;i<incidents.length;i++) {
-    var inc = incidents[i];
-    var score = scoreIncident(inc, tokens);
-    if (REPORT_GPA_SELECTED.length) {
-      var matchGpa = false;
-      for (var g=0; g<REPORT_GPA_SELECTED.length; g++) { if (arrayContains(inc.gpa, REPORT_GPA_SELECTED[g])) { matchGpa = true; } }
-      if (matchGpa) { score += 3; }
-    }
-    if (score<=0) continue;
-    scored.push({inc:inc, score:score, coverage:tokenCoverage(inc, tokens)});
-  }
-  scored.sort(function(a,b){ return b.score-a.score; });
-  var top = scored.slice(0,5);
-  if (top.length===0 || top[0].coverage < 0.12) {
-    box.innerHTML = '<div class="empty"><div>&empty;</div>Похожих случаев в базе не найдено (совпадений слишком мало). Возможно, это новый тип неисправности — оформите акт технического расследования и добавьте его в базу.</div>';
-    return;
-  }
-  var summary = document.createElement('div');
-  summary.className = 'meta-row';
-  summary.innerHTML = '<span class="left">Найдено похожих случаев: <b>'+top.length+'</b></span><span class="right">Сортировка по схожести</span>';
-  box.appendChild(summary);
-  for (var s=0; s<top.length; s++) {
-    var pct = Math.max(1, Math.round(100 * top[s].coverage));
-    box.appendChild(buildCard(top[s].inc, tokens, 'Совпадение слов: '+pct+'%'));
-  }
-}
-
 document.getElementById('q').addEventListener('input', render);
 document.getElementById('fGpa').addEventListener('change', render);
 document.getElementById('fCat').addEventListener('change', render);
@@ -363,9 +258,9 @@ document.getElementById('reset').addEventListener('click', function(){
   document.getElementById('fGpa').value='';
   document.getElementById('fCat').value='';
   document.getElementById('fYear').value='';
+  setFileStatus('');
   render();
 });
-document.getElementById('analyzeBtn').addEventListener('click', analyzeReport);
 
 function loadScriptOnce(url, cb) {
   var key = '_loaded_' + url;
@@ -382,13 +277,12 @@ function setFileStatus(msg, isError) {
   el.className = isError ? 'error' : '';
 }
 function appendReportText(text) {
-  var ta = document.getElementById('reportText');
   var cleaned = (text || '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
-  if (!cleaned) { setFileStatus('В файле не найдено текста для анализа.', true); return; }
-  var truncated = false;
-  if (cleaned.length > 4000) { cleaned = cleaned.slice(0, 4000); truncated = true; }
-  ta.value = (ta.value ? ta.value + '\n\n' : '') + cleaned;
-  setFileStatus('Текст из файла добавлен в поле выше' + (truncated ? ' (обрезан до 4000 символов, взята основная часть)' : '') + '. Проверьте и нажмите «Найти похожие случаи».');
+  if (!cleaned) { setFileStatus('В файле не найдено текста для поиска.', true); return; }
+  if (cleaned.length > 4000) { cleaned = cleaned.slice(0, 4000); }
+  document.getElementById('q').value = cleaned;
+  render();
+  setFileStatus('Готово — показаны похожие случаи по содержимому файла. Можно уточнить запрос в поле поиска.');
 }
 function ocrPdfPages(pdf) {
   var maxPages = Math.min(pdf.numPages, 5);
@@ -488,18 +382,6 @@ function handleReportFile(file) {
 document.getElementById('reportFile').addEventListener('change', function(e){
   handleReportFile(e.target.files[0]);
 });
-document.getElementById('tabSearch').addEventListener('click', function(){
-  document.getElementById('tabSearch').className = 'mode-tab active';
-  document.getElementById('tabReport').className = 'mode-tab';
-  document.getElementById('searchMode').style.display = '';
-  document.getElementById('reportMode').style.display = 'none';
-});
-document.getElementById('tabReport').addEventListener('click', function(){
-  document.getElementById('tabReport').className = 'mode-tab active';
-  document.getElementById('tabSearch').className = 'mode-tab';
-  document.getElementById('searchMode').style.display = 'none';
-  document.getElementById('reportMode').style.display = '';
-});
 
 Promise.all([
   fetch('accidents.json').then(function(r){ return r.json(); }),
@@ -538,7 +420,6 @@ Promise.all([
   }
   initFilters();
   render();
-  buildReportGpaRow();
 }).catch(function(err){
   document.getElementById('results').innerHTML =
     '<div class="empty"><div>&#9888;</div>Не удалось загрузить accidents.json / defects.json.<br>'+
