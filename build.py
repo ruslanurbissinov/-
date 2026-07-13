@@ -236,7 +236,6 @@ function render() {{
     htmlStr += '<p class="cause">'+highlight(inc.cause, tokens)+'</p>';
     htmlStr += '<button class="toggle-btn" type="button">Показать меры и заключение &#9662;</button>';
     htmlStr += '<div class="details">';
-    if (inc.measures) {{ htmlStr += '<p><b>Обстоятельства, при которых произошел останов:</b> '+highlight(inc.measures, tokens)+'</p>'; }}
     if (inc.conclusion) {{ htmlStr += '<p><b>Заключение:</b> '+highlight(inc.conclusion, tokens)+'</p>'; }}
     var principalMeasures = '';
     if (inc.remediation && inc.remediation.length) {{
@@ -563,7 +562,7 @@ def build_xlsx(incidents, defects):
     header_cell(ws4['A1'], 'ДЕТАЛИЗАЦИЯ ИНЦИДЕНТОВ ПО АКТАМ ТЕХНИЧЕСКОГО РАССЛЕДОВАНИЯ', size=13)
     ws4.row_dimensions[1].height = 26
     headers4 = ['№ Акта', 'Дата', 'Время', 'ГПА', 'Тип останова', 'Категория причины',
-                'Причина (описание)', 'Обстоятельства, при которых произошел останов', 'Заключение / Принятые меры']
+                'Причина (описание)', 'Меры при останове', 'Заключение / Принятые меры']
     for i, h in enumerate(headers4, start=1):
         header_cell(ws4.cell(row=3, column=i), h, size=10, fill=GREY, color='FF2D3748')
 
@@ -965,7 +964,6 @@ function render() {{
     htmlStr += '<p class="cause">' + highlight(inc.cause, tokens) + '</p>';
     htmlStr += '<button class="toggle-btn" type="button">Показать меры и заключение &#9662;</button>';
     htmlStr += '<div class="details">';
-    htmlStr += '<p><b>Обстоятельства, при которых произошел останов:</b> ' + highlight(inc.measures, tokens) + '</p>';
     htmlStr += '<p><b>Заключение:</b> ' + highlight(inc.conclusion, tokens) + '</p>';
     var principalMeasures = '';
     if (inc.remediation && inc.remediation.length) {{
