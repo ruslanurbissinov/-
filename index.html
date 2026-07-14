@@ -83,7 +83,7 @@
     <span class="right">Сортировка по релевантности</span>
   </div>
   <div id="results"><div class="loading">Загрузка данных...</div></div>
-  <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория) &middot; сборка: 2026-07-14 06:29</div>
+  <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория) &middot; сборка: 2026-07-14 06:43</div>
 </div>
 <script>
 var incidents = [];
@@ -156,10 +156,15 @@ function tokenize(s) {
 }
 var COMMON_UNIT_RE = /^(гпа|гпэс|адэс|ибп|вк|ак|мг|кс)№?\d{0,2}$/;
 var FORCED_TAGS = {};
+var ACRONYM_STOPWORDS = {'act':1,'the':1,'and':1,'for':1,'attachment':1,'technical':1,'investigation':1,'circumstances':1,'during':1,'which':1,'shutdown':1,'has':1,'occurred':1,'actions':1,'taken':1,'recover':1,'operating':1,'mode':1,'online':1,'damaged':1,'units':1,'details':1,'devices':1,'measures':1,'performed':1,'eliminate':1,'reasons':1,'conclusion':1,'applicability':1,'recovered':1,'further':1,'operation':1,'prevent':1,'similar':1,'auto':1,'notes':1,'name':1,'signature':1,'date':1,'engineer':1,'head':1,'chief':1,'deputy':1,'service':1,'leading':1,'shift':1,'gpa':1,'gcu':1,'report':1,'basis':1,'stop':1,'dated':1,'from':1,'about':1,'automatic':1,'forced':1,'normal':1,'emergency':1,'condition':1,'committe':1,'consisting':1,'restoration':1,'main':1,'gas':1,'pipeline':1};
 function extractUpperAcronyms(s) {
   var matches = (s||'').match(/\b[A-Z]{3,8}\b/g) || [];
   var out = {};
-  for (var i=0;i<matches.length;i++) { out[matches[i].toLowerCase()] = true; }
+  for (var i=0;i<matches.length;i++) {
+    var w = matches[i].toLowerCase();
+    if (ACRONYM_STOPWORDS[w]) continue;
+    out[w] = true;
+  }
   return out;
 }
 function isTagToken(t) {
@@ -347,9 +352,17 @@ function extractCircumstancesSection(text) {
   var m = text.search(/обстоятельств/i);
   if (m === -1) return null;
   var after = text.slice(m);
+  var m1 = after.match(/\)\s*[:.]/i);
+  if (m1 && m1.index < 400) {
+    after = after.slice(m1.index + m1[0].length);
+  } else {
+    var m2 = after.match(/:\s*\n/i);
+    if (m2 && m2.index < 300) { after = after.slice(m2.index + m2[0].length); }
+  }
   var endMatch = after.search(/\n\s*7\s*[.\)]|поврежденн|повреждённ|damaged units/i);
-  var section = (endMatch > 60) ? after.slice(0, endMatch) : after.slice(0, 1500);
-  return section.trim();
+  var section = (endMatch > 20) ? after.slice(0, endMatch) : after.slice(0, 1500);
+  section = section.trim();
+  return section.length > 15 ? section : null;
 }
 function appendReportText(text) {
   var cleaned = (text || '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
