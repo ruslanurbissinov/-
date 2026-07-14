@@ -220,11 +220,14 @@ var FIELD_WEIGHTS = [['cause',4],['name',2],['category',1.5],['act',1],['date',1
 var TAG_BOOST = 9;
 function scoreIncident(inc, tokens) {{
   if (tokens.length===0) return 0.0001;
+  var hasTags = false;
+  for (var q=0;q<tokens.length;q++) {{ if (isTagToken(tokens[q])) {{ hasTags = true; break; }} }}
   var fields = {{name:inc.name,cause:inc.cause,category:inc.category,act:inc.act,date:inc.date,gpaStr:inc.gpa.join(' '),measures:inc.measures,conclusion:inc.conclusion,recommendation:inc.recommendation}};
   var score=0;
   for (var t=0;t<tokens.length;t++) {{
     var tok = tokens[t];
     var tag = isTagToken(tok);
+    if (hasTags && !tag) continue;
     var boost = tag ? TAG_BOOST : 1;
     for (var f=0;f<FIELD_WEIGHTS.length;f++) {{
       var fn=FIELD_WEIGHTS[f][0], w=FIELD_WEIGHTS[f][1];
@@ -325,7 +328,6 @@ function tokenCoverage(inc, tokens) {{
   }}
   var tagCov = coverageFor(tagToks);
   var wordCov = coverageFor(wordToks);
-  if (tagCov!==null && wordCov!==null) {{ return tagCov*0.7 + wordCov*0.3; }}
   if (tagCov!==null) {{ return tagCov; }}
   if (wordCov!==null) {{ return wordCov; }}
   return 0;
@@ -1176,11 +1178,14 @@ var TAG_BOOST = 9;
 
 function scoreIncident(inc, tokens) {{
   if (tokens.length === 0) return 0.0001;
+  var hasTags = false;
+  for (var q = 0; q < tokens.length; q++) {{ if (isTagToken(tokens[q])) {{ hasTags = true; break; }} }}
   var fields = {{ name: inc.name, cause: inc.cause, category: inc.category, act: inc.act, date: inc.date, gpaStr: inc.gpa.join(' '), measures: inc.measures, conclusion: inc.conclusion, recommendation: inc.recommendation }};
   var score = 0;
   for (var t = 0; t < tokens.length; t++) {{
     var tok = tokens[t];
     var tag = isTagToken(tok);
+    if (hasTags && !tag) continue;
     var boost = tag ? TAG_BOOST : 1;
     for (var f = 0; f < FIELD_WEIGHTS.length; f++) {{
       var fieldName = FIELD_WEIGHTS[f][0], weight = FIELD_WEIGHTS[f][1];
