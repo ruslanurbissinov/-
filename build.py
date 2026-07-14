@@ -875,6 +875,7 @@ function renderDashboard() {{
   for (var rr=0; rr<repeatByYear.length; rr++) {{ totalRepeatIncidents += repeatByYear[rr].repeat; }}
   var repeatSharePct = accs.length ? Math.round(100*totalRepeatIncidents/accs.length) : 0;
 
+  html += '<h3 style="margin:22px 0 12px;font-size:15.5px;color:var(--navy);border-top:1px solid var(--border);padding-top:20px;">&#128200; Метрики эффективности</h3>';
   html += '<div class="info-callout"><b>Цель системы:</b> снизить долю повторных аварийных остановов на 40% и сократить время анализа причины с 3&ndash;5 суток (ручной пролистывание архива актов) до 1 рабочего дня за счёт мгновенного поиска похожих случаев по базе.</div>';
   html += '<div class="dash-grid">' +
     '<div class="stat-card"><div class="num">'+repeatSharePct+'%</div><div class="lbl">Аварий с уже встречавшейся причиной (сейчас, без системы)</div></div>' +
