@@ -215,7 +215,7 @@ function isTagToken(t) {{
   if (COMMON_UNIT_RE.test(t)) {{ return false; }}
   return t.length>=3 && /[0-9]/.test(t) && /[a-zа-я]/i.test(t);
 }}
-var FIELD_WEIGHTS = [['name',3],['cause',2],['category',2],['act',1.5],['date',1.5],['gpaStr',1.5],['measures',1],['conclusion',1],['recommendation',1]];
+var FIELD_WEIGHTS = [['cause',4],['name',2],['category',1.5],['act',1],['date',1],['gpaStr',1],['measures',1],['conclusion',0.5],['recommendation',0.5]];
 var TAG_BOOST = 9;
 function scoreIncident(inc, tokens) {{
   if (tokens.length===0) return 0.0001;
@@ -230,7 +230,7 @@ function scoreIncident(inc, tokens) {{
       var text = normalize(fields[fn]);
       if (text.indexOf(tok)!==-1) {{
         var mult = boost;
-        if (tag && fn==='cause') {{ mult *= 2; }}
+        if (fn==='cause') {{ mult *= (tag ? 2 : 1.5); }}
         score += w*mult;
       }}
     }}
@@ -311,16 +311,23 @@ function tokenCoverage(inc, tokens) {{
   for (var i=0;i<tokens.length;i++) {{
     if (isTagToken(tokens[i])) {{ tagToks.push(tokens[i]); }} else {{ wordToks.push(tokens[i]); }}
   }}
-  if (tagToks.length) {{
-    var causeText = normalize(inc.cause);
-    var tagMatched = 0;
-    for (var j=0;j<tagToks.length;j++) {{ if (causeText.indexOf(tagToks[j])!==-1) {{ tagMatched++; }} }}
-    return tagMatched / tagToks.length;
-  }}
+  var causeText = normalize(inc.cause);
   var allText = normalize([inc.name, inc.cause, inc.category, inc.gpa.join(' '), inc.measures, inc.conclusion, inc.recommendation].join(' '));
-  var matched = 0;
-  for (var i2=0;i2<tokens.length;i2++) {{ if (allText.indexOf(tokens[i2])!==-1) {{ matched++; }} }}
-  return matched / tokens.length;
+  function coverageFor(toks) {{
+    if (!toks.length) return null;
+    var causeMatched = 0, allMatched = 0;
+    for (var j=0;j<toks.length;j++) {{
+      if (causeText.indexOf(toks[j])!==-1) {{ causeMatched++; }}
+      if (allText.indexOf(toks[j])!==-1) {{ allMatched++; }}
+    }}
+    return (causeMatched/toks.length)*0.75 + (allMatched/toks.length)*0.25;
+  }}
+  var tagCov = coverageFor(tagToks);
+  var wordCov = coverageFor(wordToks);
+  if (tagCov!==null && wordCov!==null) {{ return tagCov*0.7 + wordCov*0.3; }}
+  if (tagCov!==null) {{ return tagCov; }}
+  if (wordCov!==null) {{ return wordCov; }}
+  return 0;
 }}
 function render() {{
   var q = document.getElementById('q').value;
@@ -1125,7 +1132,7 @@ function tokenize(s) {{
 }}
 function isTagToken(t) {{ return t.length>=3 && /[0-9]/.test(t) && /[a-zа-я]/i.test(t); }}
 
-var FIELD_WEIGHTS = [['name', 3], ['cause', 2], ['category', 2], ['act', 1.5], ['date', 1.5], ['gpaStr', 1.5], ['measures', 1], ['conclusion', 1], ['recommendation', 1]];
+var FIELD_WEIGHTS = [['cause', 4], ['name', 2], ['category', 1.5], ['act', 1], ['date', 1], ['gpaStr', 1], ['measures', 1], ['conclusion', 0.5], ['recommendation', 0.5]];
 var TAG_BOOST = 9;
 
 function scoreIncident(inc, tokens) {{
@@ -1134,11 +1141,16 @@ function scoreIncident(inc, tokens) {{
   var score = 0;
   for (var t = 0; t < tokens.length; t++) {{
     var tok = tokens[t];
-    var boost = isTagToken(tok) ? TAG_BOOST : 1;
+    var tag = isTagToken(tok);
+    var boost = tag ? TAG_BOOST : 1;
     for (var f = 0; f < FIELD_WEIGHTS.length; f++) {{
       var fieldName = FIELD_WEIGHTS[f][0], weight = FIELD_WEIGHTS[f][1];
       var text = normalize(fields[fieldName]);
-      if (text.indexOf(tok) !== -1) score += weight*boost;
+      if (text.indexOf(tok) !== -1) {{
+        var mult = boost;
+        if (fieldName==='cause') {{ mult *= (tag ? 2 : 1.5); }}
+        score += weight*mult;
+      }}
     }}
   }}
   return score;
