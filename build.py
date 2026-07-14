@@ -353,15 +353,15 @@ function render() {{
     if (fCat && inc.category!==fCat) continue;
     if (fYear && inc.date.slice(-4)!==fYear) continue;
     var pct = tokenCoverage(inc, tokens);
-    if (tokens.length && pct < 0.5) continue;
+    if (tokens.length && pct < 0.25) continue;
     scored.push({{inc:inc, score:score, pct:pct}});
   }}
   scored.sort(function(a,b){{ if (b.pct!==a.pct) {{ return b.pct-a.pct; }} return b.score-a.score; }});
-  document.getElementById('count').innerHTML = 'Найдено: <b>'+scored.length+'</b> из '+incidents.length+(tokens.length?' (схожесть от 100% до 50%)':'');
+  document.getElementById('count').innerHTML = 'Найдено: <b>'+scored.length+'</b> из '+incidents.length+(tokens.length?' (схожесть от 100% до 25%)':'');
   var box = document.getElementById('results');
   box.innerHTML = '';
   if (scored.length===0) {{
-    box.innerHTML = '<div class="empty"><div>&empty;</div>Ничего не найдено с совпадением 50% и выше. Попробуйте другой запрос или сбросьте фильтры.</div>';
+    box.innerHTML = '<div class="empty"><div>&empty;</div>Ничего не найдено с совпадением 25% и выше. Попробуйте другой запрос или сбросьте фильтры.</div>';
     return;
   }}
   for (var s=0;s<scored.length;s++) {{
