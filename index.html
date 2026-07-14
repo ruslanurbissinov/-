@@ -85,7 +85,7 @@
     <span class="right">Сортировка по релевантности</span>
   </div>
   <div id="results"><div class="loading">Загрузка данных...</div></div>
-  <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория) &middot; сборка: 2026-07-14 07:11</div>
+  <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория) &middot; сборка: 2026-07-14 07:25</div>
 </div>
 <script>
 var incidents = [];
@@ -176,7 +176,7 @@ function isTagToken(t) {
 }
 var FIELD_WEIGHTS = [['cause',4],['name',2],['category',1.5],['act',1],['date',1],['gpaStr',1],['measures',1],['conclusion',0.5],['recommendation',0.5]];
 var TAG_BOOST = 9;
-function scoreIncident(inc, tokens) {
+function scoreIncident(inc, tokens, allowWords) {
   if (tokens.length===0) return 0.0001;
   var hasTags = false;
   for (var q=0;q<tokens.length;q++) { if (isTagToken(tokens[q])) { hasTags = true; break; } }
@@ -186,7 +186,7 @@ function scoreIncident(inc, tokens) {
   for (var t=0;t<tokens.length;t++) {
     var tok = tokens[t];
     var tag = isTagToken(tok);
-    if (hasTags && !tag) continue;
+    if (hasTags && !tag && !allowWords) continue;
     var boost = tag ? TAG_BOOST : 1;
     if (tag) {
       for (var nt=0;nt<normTags.length;nt++) {
@@ -306,6 +306,10 @@ function tokenCoverage(inc, tokens) {
   }
   var tagCov = coverageFor(tagToks, true);
   var wordCov = coverageFor(wordToks, false);
+  if (arguments.length>2 && arguments[2]) {
+    if (tagCov!==null && wordCov!==null) { return Math.max(tagCov, wordCov); }
+    return tagCov!==null ? tagCov : (wordCov!==null ? wordCov : 0);
+  }
   if (tagCov!==null) { return tagCov; }
   if (wordCov!==null) { return wordCov; }
   return 0;
@@ -317,20 +321,29 @@ function render() {
   var fGpa = document.getElementById('fGpa').value;
   var fCat = document.getElementById('fCat').value;
   var fYear = document.getElementById('fYear').value;
-  var scored = [];
-  for (var i=0;i<incidents.length;i++) {
-    var inc = incidents[i];
-    var score = scoreIncident(inc, tokens);
-    if (score<=0) continue;
-    if (fGpa && !arrayContains(inc.gpa, fGpa)) continue;
-    if (fCat && inc.category!==fCat) continue;
-    if (fYear && inc.date.slice(-4)!==fYear) continue;
-    var pct = tokenCoverage(inc, tokens);
-    if (tokens.length && pct < 0.25) continue;
-    scored.push({inc:inc, score:score, pct:pct});
+  function runPass(allowWords) {
+    var out = [];
+    for (var i=0;i<incidents.length;i++) {
+      var inc = incidents[i];
+      var score = scoreIncident(inc, tokens, allowWords);
+      if (score<=0) continue;
+      if (fGpa && !arrayContains(inc.gpa, fGpa)) continue;
+      if (fCat && inc.category!==fCat) continue;
+      if (fYear && inc.date.slice(-4)!==fYear) continue;
+      var pct = tokenCoverage(inc, tokens, allowWords);
+      if (tokens.length && pct < 0.25) continue;
+      out.push({inc:inc, score:score, pct:pct});
+    }
+    return out;
+  }
+  var scored = runPass(false);
+  var usedFallback = false;
+  if (tokens.length && scored.length===0) {
+    scored = runPass(true);
+    usedFallback = true;
   }
   scored.sort(function(a,b){ if (b.pct!==a.pct) { return b.pct-a.pct; } return b.score-a.score; });
-  document.getElementById('count').innerHTML = 'Найдено: <b>'+scored.length+'</b> из '+incidents.length+(tokens.length?' (схожесть от 100% до 25%)':'');
+  document.getElementById('count').innerHTML = 'Найдено: <b>'+scored.length+'</b> из '+incidents.length+(tokens.length?' (схожесть от 100% до 25%)'+(usedFallback?' &middot; по смыслу, точных тегов не найдено':''):'');
   var box = document.getElementById('results');
   box.innerHTML = '';
   if (scored.length===0) {
