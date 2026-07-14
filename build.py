@@ -462,7 +462,16 @@ function handleReportFile(file) {{
           for (var p = 1; p <= pdf.numPages; p++) {{
             pagePromises.push(pdf.getPage(p).then(function(page){{
               return page.getTextContent().then(function(tc){{
-                return tc.items.map(function(it){{ return it.str; }}).join(' ');
+                var lastY = null, parts = [];
+                for (var idx=0; idx<tc.items.length; idx++) {{
+                  var item = tc.items[idx];
+                  var y = (item.transform && item.transform.length>5) ? item.transform[5] : null;
+                  if (lastY !== null && y !== null && Math.abs(y - lastY) > 2) {{ parts.push('\\n'); }}
+                  parts.push(item.str);
+                  parts.push(' ');
+                  if (y !== null) {{ lastY = y; }}
+                }}
+                return parts.join('');
               }});
             }}));
           }}
