@@ -83,7 +83,7 @@
     <span class="right">Сортировка по релевантности</span>
   </div>
   <div id="results"><div class="loading">Загрузка данных...</div></div>
-  <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория) &middot; сборка: 2026-07-14 04:30</div>
+  <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория) &middot; сборка: 2026-07-14 06:09</div>
 </div>
 <script>
 var incidents = [];
@@ -341,13 +341,27 @@ function setFileStatus(msg, isError) {
   el.textContent = msg;
   el.className = isError ? 'error' : '';
 }
+function extractCircumstancesSection(text) {
+  var m = text.search(/обстоятельств/i);
+  if (m === -1) return null;
+  var after = text.slice(m);
+  var endMatch = after.search(/\n\s*7\s*[.\)]|поврежденн|повреждённ|damaged units/i);
+  var section = (endMatch > 60) ? after.slice(0, endMatch) : after.slice(0, 1500);
+  return section.trim();
+}
 function appendReportText(text) {
   var cleaned = (text || '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
   if (!cleaned) { setFileStatus('В файле не найдено текста для поиска.', true); return; }
-  if (cleaned.length > 4000) { cleaned = cleaned.slice(0, 4000); }
-  document.getElementById('q').value = cleaned;
+  var finalText = cleaned;
+  var circ = extractCircumstancesSection(cleaned);
+  if (circ && circ.length > 30) {
+    var rest = cleaned.slice(0, 2500);
+    finalText = circ + '\n' + rest;
+  }
+  if (finalText.length > 4500) { finalText = finalText.slice(0, 4500); }
+  document.getElementById('q').value = finalText;
   render();
-  setFileStatus('Готово — показаны похожие случаи по содержимому файла. Можно уточнить запрос в поле поиска.');
+  setFileStatus(circ ? 'Готово — найден раздел «Обстоятельства», показаны похожие случаи. Можно уточнить запрос в поле поиска.' : 'Готово — показаны похожие случаи по содержимому файла. Можно уточнить запрос в поле поиска.');
 }
 function looksGarbled(text) {
   var norm = normalize(text);
@@ -367,12 +381,17 @@ function ocrPdfPages(pdf) {
       function processPage(p) {
         if (p > maxPages) {
           worker.terminate();
-          appendReportText(allText.join('\n'));
+          var combined = allText.join('\n');
+          if (combined.replace(/\s+/g,'').length < 15) {
+            setFileStatus('Не удалось распознать текст на странице(ах) — качество скана слишком низкое. Попробуйте вписать обстоятельства вручную в поле поиска.', true);
+            return;
+          }
+          appendReportText(combined);
           return;
         }
         setFileStatus('Распознаём страницу ' + p + ' из ' + maxPages + '...');
         pdf.getPage(p).then(function(page){
-          var viewport = page.getViewport({scale: 2});
+          var viewport = page.getViewport({scale: 3});
           var canvas = document.createElement('canvas');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
@@ -458,8 +477,13 @@ function handleReportFile(file) {
       if (err) { setFileStatus('Не удалось загрузить библиотеку распознавания текста (нет сети?).', true); return; }
       window.Tesseract.createWorker(['rus','eng']).then(function(worker){
         worker.recognize(file).then(function(result){
-          appendReportText(result.data.text);
+          var txt = result.data.text || '';
           worker.terminate();
+          if (txt.replace(/\s+/g,'').length < 15) {
+            setFileStatus('Не удалось распознать текст на фото — качество снимка слишком низкое. Попробуйте сфотографировать чётче или вписать обстоятельства вручную.', true);
+            return;
+          }
+          appendReportText(txt);
         }).catch(function(e){ setFileStatus('Не удалось распознать текст на фото: ' + e.message, true); worker.terminate(); });
       }).catch(function(e){ setFileStatus('Не удалось запустить распознавание текста: ' + e.message, true); });
     });
