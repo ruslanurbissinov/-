@@ -448,19 +448,51 @@ function extractCircumstancesSection(text) {{
   section = section.trim();
   return section.length > 15 ? section : null;
 }}
+function extractTagsFromText(text) {{
+  var found = [];
+  var seen = {{}};
+  var tagRe = /\\b[A-ZА-Я]{{1,6}}[-\\s]?\\d{{1,5}}(?:[-\\/][A-Za-z0-9]{{1,6}})*\\b/g;
+  var m;
+  while ((m = tagRe.exec(text)) !== null) {{
+    var raw = m[0].trim();
+    var low = raw.toLowerCase().replace(/\\s+/g,'').replace(/-/g,'');
+    if (/^(гпа|гпэс|адэс|ибп|вк|ак|мг|кс|гг|зру)№?\\d{{0,2}}$/.test(low)) continue;
+    if (low.length < 4) continue;
+    if (seen[low]) continue;
+    seen[low] = true;
+    found.push(raw);
+  }}
+  var acroRe = /\\b[A-Z]{{3,8}}\\b/g;
+  while ((m = acroRe.exec(text)) !== null) {{
+    var w = m[0];
+    if (ACRONYM_STOPWORDS[w.toLowerCase()]) continue;
+    var lw = w.toLowerCase();
+    if (seen[lw]) continue;
+    seen[lw] = true;
+    found.push(w);
+  }}
+  return found;
+}}
 function appendReportText(text) {{
   var cleaned = (text || '').replace(/[ \\t]+/g, ' ').replace(/\\n{{3,}}/g, '\\n\\n').trim();
   if (!cleaned) {{ setFileStatus('В файле не найдено текста для поиска.', true); return; }}
-  var finalText = cleaned;
   var circ = extractCircumstancesSection(cleaned);
-  if (circ && circ.length > 30) {{
-    var rest = cleaned.slice(0, 2500);
-    finalText = circ + '\\n' + rest;
+  var scopeText = circ && circ.length > 30 ? circ : cleaned.slice(0, 3000);
+  var foundTags = extractTagsFromText(scopeText);
+  if (!foundTags.length) {{ foundTags = extractTagsFromText(cleaned.slice(0, 4500)); }}
+  var finalText;
+  if (foundTags.length) {{
+    finalText = foundTags.join(' ');
+    document.getElementById('q').value = finalText;
+    render();
+    setFileStatus('Готово — из файла распознаны теги (' + foundTags.join(', ') + '), поиск выполнен по ним.');
+  }} else {{
+    finalText = (circ && circ.length > 30) ? circ + '\\n' + cleaned.slice(0, 2500) : cleaned;
+    if (finalText.length > 4500) {{ finalText = finalText.slice(0, 4500); }}
+    document.getElementById('q').value = finalText;
+    render();
+    setFileStatus('Теговых номеров в файле не найдено — показаны похожие случаи по смыслу текста.');
   }}
-  if (finalText.length > 4500) {{ finalText = finalText.slice(0, 4500); }}
-  document.getElementById('q').value = finalText;
-  render();
-  setFileStatus(circ ? 'Готово — найден раздел «Обстоятельства», показаны похожие случаи. Можно уточнить запрос в поле поиска.' : 'Готово — показаны похожие случаи по содержимому файла. Можно уточнить запрос в поле поиска.');
 }}
 function looksGarbled(text) {{
   var norm = normalize(text);
