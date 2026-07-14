@@ -126,7 +126,20 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
   .yearbar{{width:100%;max-width:38px;background:var(--teal);border-radius:4px 4px 0 0;transition:height .2s;}}
   .yearbar-lbl{{font-size:11px;color:var(--text-muted);margin-top:5px;}}
   .yearbar-val{{font-size:11.5px;font-weight:600;color:var(--text);margin-bottom:3px;}}
-  @media (max-width:600px){{.search-row{{flex-direction:column;}} .bar-label{{flex-basis:120px;}}}}
+  .rec-block{{background:var(--teal-bg);border:1px solid var(--teal);border-radius:10px;padding:16px 18px;margin-bottom:14px;}}
+  .rec-title{{font-size:14px;font-weight:700;color:var(--teal);margin:0 0 10px;}}
+  .rec-line{{font-size:13.5px;margin:0 0 8px;color:var(--text);}}
+  .rec-line:last-child{{margin-bottom:0;}}
+  .rec-line b{{color:var(--navy);}}
+  .rec-note{{font-size:12.5px;margin:8px 0 0;padding-top:8px;border-top:1px dashed rgba(15,110,86,0.35);color:var(--amber);font-weight:600;}}
+  .reg-row{{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px;}}
+  .reg-row:last-child{{border-bottom:none;}}
+  .reg-cat{{flex:1;color:var(--text);}}
+  .reg-count{{flex:0 0 auto;background:var(--coral-bg);color:var(--coral);font-weight:700;padding:2px 9px;border-radius:12px;font-size:11.5px;white-space:nowrap;}}
+  .reg-dates{{flex:0 0 150px;text-align:right;color:var(--text-muted);font-size:11.5px;}}
+  .info-callout{{background:var(--amber-bg);border:1px solid var(--amber);border-radius:10px;padding:14px 16px;font-size:13px;color:var(--text);margin-bottom:14px;line-height:1.55;}}
+  .info-callout b{{color:var(--amber);}}
+  @media (max-width:600px){{.search-row{{flex-direction:column;}} .bar-label{{flex-basis:120px;}} .reg-dates{{flex-basis:110px;}}}}
 </style>
 </head>
 <body>
@@ -158,6 +171,7 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
     <span class="left" id="count"></span>
     <span class="right">Сортировка по релевантности</span>
   </div>
+  <div id="recBlock"></div>
   <div id="results"><div class="loading">Загрузка данных...</div></div>
   <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория)</div>
   </div>
@@ -252,13 +266,13 @@ function isTagToken(t) {{
   if (COMMON_UNIT_RE.test(t)) {{ return false; }}
   return t.length>=3 && /[0-9]/.test(t) && /[a-zа-я]/i.test(t);
 }}
-var FIELD_WEIGHTS = [['cause',4],['name',2],['category',1.5],['act',1],['date',1],['gpaStr',1],['measures',1],['conclusion',0.5],['recommendation',0.5]];
+var FIELD_WEIGHTS = [['cause',4],['name',2],['category',1.5],['act',1],['date',1],['gpaStr',1],['measures',1],['conclusion',0.5],['recommendation',0.5],['prevention',0.5]];
 var TAG_BOOST = 9;
 function scoreIncident(inc, tokens, allowWords) {{
   if (tokens.length===0) return 0.0001;
   var hasTags = false;
   for (var q=0;q<tokens.length;q++) {{ if (isTagToken(tokens[q])) {{ hasTags = true; break; }} }}
-  var fields = {{name:inc.name,cause:inc.cause,category:inc.category,act:inc.act,date:inc.date,gpaStr:inc.gpa.join(' '),measures:inc.measures,conclusion:inc.conclusion,recommendation:inc.recommendation}};
+  var fields = {{name:inc.name,cause:inc.cause,category:inc.category,act:inc.act,date:inc.date,gpaStr:inc.gpa.join(' '),measures:inc.measures,conclusion:inc.conclusion,recommendation:inc.recommendation,prevention:inc.prevention_measures||''}};
   var score=0;
   var normTags = (inc.tags||[]).map(function(x){{ return normalize(x); }});
   for (var t=0;t<tokens.length;t++) {{
@@ -329,6 +343,9 @@ function buildCard(inc, tokens, scoreBadge) {{
     principalMeasures = inc.measures || '—';
   }}
   htmlStr += '<p><b>Принятые меры:</b> '+highlight(principalMeasures, tokens)+'</p>';
+  if (inc.prevention_measures) {{
+    htmlStr += '<p><b>Мероприятия по недопущению аналогичного автоматического останова:</b> '+highlight(inc.prevention_measures, tokens)+'</p>';
+  }}
   var docLinks = [];
   if (inc.source) {{ docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">Открыть акт расследования</a>'); }}
   if (inc.remediation && inc.remediation.length) {{
@@ -363,7 +380,7 @@ function tokenCoverage(inc, tokens) {{
     if (isTagToken(tokens[i])) {{ tagToks.push(tokens[i]); }} else {{ wordToks.push(tokens[i]); }}
   }}
   var causeText = normalize(inc.cause);
-  var allText = normalize([inc.name, inc.cause, inc.category, inc.gpa.join(' '), inc.measures, inc.conclusion, inc.recommendation].join(' '));
+  var allText = normalize([inc.name, inc.cause, inc.category, inc.gpa.join(' '), inc.measures, inc.conclusion, inc.recommendation, inc.prevention_measures||''].join(' '));
   var normTags = (inc.tags||[]).map(function(x){{ return normalize(x); }});
   function coverageFor(toks, isTags) {{
     if (!toks.length) return null;
@@ -391,6 +408,44 @@ function tokenCoverage(inc, tokens) {{
   if (tagCov!==null) {{ return tagCov; }}
   if (wordCov!==null) {{ return wordCov; }}
   return 0;
+}}
+function buildRecommendation(scored) {{
+  if (!scored.length) return '';
+  var top = scored[0].inc;
+  var top3 = scored.slice(0, Math.min(3, scored.length));
+  var catCounts = {{}}, catOrder = [];
+  for (var i=0;i<top3.length;i++) {{
+    var c = top3[i].inc.category;
+    if (catCounts[c]===undefined) {{ catCounts[c]=0; catOrder.push(c); }}
+    catCounts[c] = catCounts[c] + 1;
+  }}
+  var repeatCat = null, repeatCount = 0;
+  for (var j=0;j<catOrder.length;j++) {{
+    if (catCounts[catOrder[j]] > repeatCount) {{ repeatCount = catCounts[catOrder[j]]; repeatCat = catOrder[j]; }}
+  }}
+  var pctRounded = Math.round(100*scored[0].pct);
+  var measuresText = '';
+  if (top.remediation && top.remediation.length) {{
+    var parts = [];
+    for (var w=0; w<top.remediation.length; w++) {{ parts.push(top.remediation[w].work_description || ''); }}
+    measuresText = parts.join('; ');
+  }} else {{
+    measuresText = top.measures || '';
+  }}
+  var html = '<div class="rec-block">';
+  html += '<div class="rec-title">&#128161; Рекомендация на основе похожих случаев</div>';
+  html += '<p class="rec-line"><b>Наиболее похожий случай:</b> акт '+escapeHtml(top.act)+' от '+escapeHtml(top.date)+' &middot; совпадение '+pctRounded+'% &middot; '+escapeHtml(top.category)+'</p>';
+  if (measuresText) {{
+    html += '<p class="rec-line"><b>Что делать:</b> '+escapeHtml(measuresText)+'</p>';
+  }}
+  if (top.recommendation) {{
+    html += '<p class="rec-line"><b>Рекомендация по итогам расследования:</b> '+escapeHtml(top.recommendation)+'</p>';
+  }}
+  if (repeatCat && repeatCount >= 2) {{
+    html += '<p class="rec-note">&#9888; Причина &laquo;'+escapeHtml(repeatCat)+'&raquo; встречается в '+repeatCount+' из '+top3.length+' лучших совпадений — похоже на повторяющуюся системную проблему, стоит проверить не только текущий останов, но и провести системную диагностику.</p>';
+  }}
+  html += '</div>';
+  return html;
 }}
 function render() {{
   var q = document.getElementById('q').value;
@@ -422,6 +477,8 @@ function render() {{
   }}
   scored.sort(function(a,b){{ if (b.pct!==a.pct) {{ return b.pct-a.pct; }} return b.score-a.score; }});
   document.getElementById('count').innerHTML = 'Найдено: <b>'+scored.length+'</b> из '+incidents.length+(tokens.length?' (схожесть от 100% до 25%)'+(usedFallback?' &middot; по смыслу, точных тегов не найдено':''):'');
+  var recBox = document.getElementById('recBlock');
+  recBox.innerHTML = (tokens.length && scored.length) ? buildRecommendation(scored) : '';
   var box = document.getElementById('results');
   box.innerHTML = '';
   if (scored.length===0) {{
@@ -715,6 +772,72 @@ function yearChartHtml(data) {{
   html += '</div></div>';
   return html;
 }}
+function parseDMY(dateStr) {{
+  var parts = (dateStr||'').split('.');
+  if (parts.length<3) return new Date(0);
+  return new Date(parseInt(parts[2],10), parseInt(parts[1],10)-1, parseInt(parts[0],10));
+}}
+function computeRepeatRateByYear(accs) {{
+  var sorted = accs.slice().sort(function(a,b){{ return parseDMY(a.date) - parseDMY(b.date); }});
+  var seenCat = {{}}, yearTotal = {{}}, yearRepeat = {{}}, order = [];
+  for (var i=0;i<sorted.length;i++) {{
+    var inc = sorted[i];
+    var yr = inc.date.slice(-4);
+    if (yearTotal[yr]===undefined) {{ yearTotal[yr]=0; yearRepeat[yr]=0; order.push(yr); }}
+    yearTotal[yr]++;
+    if (seenCat[inc.category]) {{ yearRepeat[yr]++; }}
+    seenCat[inc.category] = (seenCat[inc.category]||0) + 1;
+  }}
+  var arr = [];
+  for (var j=0;j<order.length;j++) {{
+    var yr2 = order[j];
+    var pct = yearTotal[yr2]>0 ? Math.round(100*yearRepeat[yr2]/yearTotal[yr2]) : 0;
+    arr.push({{label: yr2, value: pct, total: yearTotal[yr2], repeat: yearRepeat[yr2]}});
+  }}
+  arr.sort(function(a,b){{ return a.label < b.label ? -1 : (a.label > b.label ? 1 : 0); }});
+  return arr;
+}}
+function percentYearChartHtml(data, title) {{
+  var html = '<div class="chart-card"><h4>'+escapeHtml(title)+'</h4><div class="yearbars">';
+  if (!data.length) {{ html += '<div style="color:var(--text-muted);font-size:13px;">Нет данных</div>'; }}
+  for (var i=0;i<data.length;i++) {{
+    var h = Math.max(4, data[i].value);
+    html += '<div class="yearbar-col"><div class="yearbar-val">'+data[i].value+'%</div>' +
+      '<div class="yearbar" style="height:'+h+'%;background:var(--coral);" title="'+data[i].repeat+' из '+data[i].total+'"></div>' +
+      '<div class="yearbar-lbl">'+escapeHtml(data[i].label)+'</div></div>';
+  }}
+  html += '</div></div>';
+  return html;
+}}
+function computeRepeatRegistry(accs) {{
+  var byCat = {{}}, order = [];
+  for (var i=0;i<accs.length;i++) {{
+    var c = accs[i].category;
+    if (byCat[c]===undefined) {{ byCat[c] = []; order.push(c); }}
+    byCat[c].push(accs[i]);
+  }}
+  var rows = [];
+  for (var j=0;j<order.length;j++) {{
+    var list = byCat[order[j]];
+    if (list.length < 2) continue;
+    list.sort(function(a,b){{ return parseDMY(a.date) - parseDMY(b.date); }});
+    rows.push({{category: order[j], count: list.length, first: list[0].date, last: list[list.length-1].date}});
+  }}
+  rows.sort(function(a,b){{ return b.count - a.count; }});
+  return rows;
+}}
+function repeatRegistryHtml(rows) {{
+  var html = '<div class="chart-card"><h4>Реестр повторяющихся причин &mdash; кандидаты для системного устранения</h4>';
+  if (!rows.length) {{ html += '<div style="color:var(--text-muted);font-size:13px;">Повторяющихся причин пока не выявлено.</div>'; }}
+  for (var i=0;i<rows.length;i++) {{
+    var r = rows[i];
+    html += '<div class="reg-row"><div class="reg-cat">'+escapeHtml(r.category)+'</div>' +
+      '<div class="reg-count">'+r.count+' раз</div>' +
+      '<div class="reg-dates">'+escapeHtml(r.first)+' &rarr; '+escapeHtml(r.last)+'</div></div>';
+  }}
+  html += '</div>';
+  return html;
+}}
 var _dashRendered = false;
 function renderDashboard() {{
   if (_dashRendered) return;
@@ -745,6 +868,21 @@ function renderDashboard() {{
   html += chartCardHtml('Аварии по агрегатам (ГПА)', byGpa, 'var(--teal)');
   html += chartCardHtml('Топ повторяющихся причин / категорий', byCategory, 'var(--navy)', 8);
   html += chartCardHtml('По типу останова', byType, 'var(--coral)');
+
+  var repeatByYear = computeRepeatRateByYear(accs);
+  var registry = computeRepeatRegistry(accs);
+  var totalRepeatIncidents = 0;
+  for (var rr=0; rr<repeatByYear.length; rr++) {{ totalRepeatIncidents += repeatByYear[rr].repeat; }}
+  var repeatSharePct = accs.length ? Math.round(100*totalRepeatIncidents/accs.length) : 0;
+
+  html += '<div class="info-callout"><b>Цель системы:</b> снизить долю повторных аварийных остановов на 40% и сократить время анализа причины с 3&ndash;5 суток (ручной пролистывание архива актов) до 1 рабочего дня за счёт мгновенного поиска похожих случаев по базе.</div>';
+  html += '<div class="dash-grid">' +
+    '<div class="stat-card"><div class="num">'+repeatSharePct+'%</div><div class="lbl">Аварий с уже встречавшейся причиной (сейчас, без системы)</div></div>' +
+    '<div class="stat-card"><div class="num">'+registry.length+'</div><div class="lbl">Категорий причин, повторявшихся 2+ раза</div></div>' +
+    '</div>';
+  html += percentYearChartHtml(repeatByYear, 'Динамика повторяемости причин по годам (% от аварий за год)');
+  html += repeatRegistryHtml(registry);
+
   document.getElementById('dashContent').innerHTML = html;
   _dashRendered = true;
 }}
@@ -761,6 +899,7 @@ Promise.all([
       kind:'incident', act:a.act, date:a.date, time:a.time, gpa:a.gpa, type:a.type,
       category:a.category, name:a.name, cause:a.cause, measures:a.measures,
       conclusion:a.conclusion, recommendation:a.recommendation,
+      prevention_measures:a.prevention_measures||'',
       remediation:a.remediation||[], source:a.source, tags:a.tags||[]
     }});
   }}
