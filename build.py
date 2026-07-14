@@ -106,7 +106,27 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
   .tag.match{{background:#DCFCE7;color:#166534;}}
   .equip-tags{{margin:0 0 8px;}}
   .tag.equip{{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:5px;font-weight:600;background:#EDE9FE;color:#5B21B6;margin:0 5px 4px 0;display:inline-block;}}
-  @media (max-width:600px){{.search-row{{flex-direction:column;}}}}
+  .tabs{{display:flex;gap:8px;margin:0 0 14px;}}
+  .tab-btn{{flex:1;padding:11px 14px;font-size:13.5px;font-weight:600;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text-muted);cursor:pointer;box-shadow:0 2px 10px rgba(15,36,64,0.06);}}
+  .tab-btn.active{{background:var(--navy);color:#fff;border-color:var(--navy);}}
+  .tab-btn:hover:not(.active){{background:#EDF1F5;}}
+  .dash-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:16px;}}
+  .stat-card{{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}}
+  .stat-card .num{{font-size:24px;font-weight:700;color:var(--navy);line-height:1.2;}}
+  .stat-card .lbl{{font-size:12px;color:var(--text-muted);margin-top:4px;}}
+  .chart-card{{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:14px;}}
+  .chart-card h4{{margin:0 0 14px;font-size:14px;font-weight:600;color:var(--text);}}
+  .bar-row{{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12.5px;}}
+  .bar-label{{flex:0 0 210px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}}
+  .bar-track{{flex:1;background:var(--surface);border-radius:5px;height:17px;position:relative;overflow:hidden;}}
+  .bar-fill{{height:100%;border-radius:5px;min-width:2px;}}
+  .bar-val{{flex:0 0 28px;text-align:right;font-weight:600;color:var(--text);}}
+  .yearbars{{display:flex;align-items:flex-end;gap:10px;height:150px;}}
+  .yearbar-col{{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}}
+  .yearbar{{width:100%;max-width:38px;background:var(--teal);border-radius:4px 4px 0 0;transition:height .2s;}}
+  .yearbar-lbl{{font-size:11px;color:var(--text-muted);margin-top:5px;}}
+  .yearbar-val{{font-size:11.5px;font-weight:600;color:var(--text);margin-bottom:3px;}}
+  @media (max-width:600px){{.search-row{{flex-direction:column;}} .bar-label{{flex-basis:120px;}}}}
 </style>
 </head>
 <body>
@@ -115,6 +135,11 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
   <p>Умная система анализа аварийных остановов и помощи инженерам &middot; КС-1 &laquo;Алимтау&raquo;</p>
 </header>
 <div class="container">
+  <div class="tabs">
+    <button class="tab-btn active" id="tabSearchBtn" type="button">&#128269; Поиск по авариям</button>
+    <button class="tab-btn" id="tabDashBtn" type="button">&#128202; Dashboard</button>
+  </div>
+  <div id="searchView">
   <div class="toolbar">
     <div class="search-row">
       <input id="q" type="text" placeholder="Например: свечной кран, потеря пламени, RB6-2, ГПА№2..." autocomplete="off" disabled>
@@ -135,6 +160,10 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
   </div>
   <div id="results"><div class="loading">Загрузка данных...</div></div>
   <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория)</div>
+  </div>
+  <div id="dashboardView" style="display:none;">
+    <div id="dashContent"><div class="loading">Загрузка данных...</div></div>
+  </div>
 </div>
 <script>
 var incidents = [];
@@ -628,6 +657,97 @@ function handleReportFile(file) {{
 document.getElementById('reportFile').addEventListener('change', function(e){{
   handleReportFile(e.target.files[0]);
 }});
+
+function switchTab(tab) {{
+  var isSearch = tab === 'search';
+  document.getElementById('searchView').style.display = isSearch ? '' : 'none';
+  document.getElementById('dashboardView').style.display = isSearch ? 'none' : '';
+  document.getElementById('tabSearchBtn').classList.toggle('active', isSearch);
+  document.getElementById('tabDashBtn').classList.toggle('active', !isSearch);
+  if (!isSearch) {{ renderDashboard(); }}
+}}
+document.getElementById('tabSearchBtn').addEventListener('click', function(){{ switchTab('search'); }});
+document.getElementById('tabDashBtn').addEventListener('click', function(){{ switchTab('dash'); }});
+
+function countBy(list, getterFn) {{
+  var map = {{}}, order = [];
+  for (var i=0;i<list.length;i++) {{
+    var v = getterFn(list[i]);
+    if (!(v instanceof Array)) v = [v];
+    for (var j=0;j<v.length;j++) {{
+      var lbl = v[j];
+      if (lbl===undefined || lbl===null || lbl==='') continue;
+      if (map[lbl]===undefined) {{ order.push(lbl); map[lbl]=0; }}
+      map[lbl] = map[lbl] + 1;
+    }}
+  }}
+  var arr = [];
+  for (var k=0;k<order.length;k++) {{ arr.push({{label: order[k], value: map[order[k]]}}); }}
+  arr.sort(function(a,b){{ return b.value - a.value; }});
+  return arr;
+}}
+function barRowHtml(item, maxVal, color) {{
+  var pct = maxVal>0 ? Math.max(2, Math.round(100*item.value/maxVal)) : 2;
+  return '<div class="bar-row"><div class="bar-label" title="'+escapeHtml(item.label)+'">'+escapeHtml(item.label)+'</div>' +
+    '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+color+';"></div></div>' +
+    '<div class="bar-val">'+item.value+'</div></div>';
+}}
+function chartCardHtml(title, data, color, limit) {{
+  var top = limit ? data.slice(0, limit) : data;
+  var maxVal = top.length ? top[0].value : 0;
+  var html = '<div class="chart-card"><h4>'+escapeHtml(title)+'</h4>';
+  if (!top.length) {{ html += '<div style="color:var(--text-muted);font-size:13px;">Нет данных</div>'; }}
+  for (var i=0;i<top.length;i++) {{ html += barRowHtml(top[i], maxVal, color); }}
+  html += '</div>';
+  return html;
+}}
+function yearChartHtml(data) {{
+  var sorted = data.slice().sort(function(a,b){{ return a.label < b.label ? -1 : (a.label > b.label ? 1 : 0); }});
+  var maxVal = 0;
+  for (var i=0;i<sorted.length;i++) {{ if (sorted[i].value>maxVal) maxVal = sorted[i].value; }}
+  var html = '<div class="chart-card"><h4>Динамика аварийных остановов по годам</h4><div class="yearbars">';
+  for (var i=0;i<sorted.length;i++) {{
+    var h = maxVal>0 ? Math.max(6, Math.round(100*sorted[i].value/maxVal)) : 6;
+    html += '<div class="yearbar-col"><div class="yearbar-val">'+sorted[i].value+'</div>' +
+      '<div class="yearbar" style="height:'+h+'%;"></div>' +
+      '<div class="yearbar-lbl">'+escapeHtml(sorted[i].label)+'</div></div>';
+  }}
+  html += '</div></div>';
+  return html;
+}}
+var _dashRendered = false;
+function renderDashboard() {{
+  if (_dashRendered) return;
+  var accs = [];
+  for (var i=0;i<incidents.length;i++) {{ if (incidents[i].kind==='incident') accs.push(incidents[i]); }}
+  if (!accs.length) {{
+    document.getElementById('dashContent').innerHTML = '<div class="empty"><div>&#9888;</div>Нет данных для отображения.</div>';
+    return;
+  }}
+  var byGpa = countBy(accs, function(inc){{ return inc.gpa; }});
+  var byYear = countBy(accs, function(inc){{ return inc.date.slice(-4); }});
+  var byCategory = countBy(accs, function(inc){{ return inc.category; }});
+  var byType = countBy(accs, function(inc){{ return inc.type; }});
+  var topGpa = byGpa.length ? byGpa[0] : null;
+  var topCat = byCategory.length ? byCategory[0] : null;
+  var years = [];
+  for (var y=0;y<byYear.length;y++) {{ years.push(byYear[y].label); }}
+  var minY = years.length ? years.reduce(function(a,b){{ return a<b?a:b; }}) : '—';
+  var maxY = years.length ? years.reduce(function(a,b){{ return a>b?a:b; }}) : '—';
+
+  var html = '<div class="dash-grid">' +
+    '<div class="stat-card"><div class="num">'+accs.length+'</div><div class="lbl">Всего аварийных остановов</div></div>' +
+    '<div class="stat-card"><div class="num">'+minY+'&ndash;'+maxY+'</div><div class="lbl">Период наблюдения</div></div>' +
+    '<div class="stat-card"><div class="num">'+(topGpa?escapeHtml(topGpa.label):'—')+'</div><div class="lbl">Чаще всего останавливался &middot; '+(topGpa?topGpa.value:0)+' раз</div></div>' +
+    '<div class="stat-card"><div class="num" style="font-size:14.5px;">'+(topCat?escapeHtml(topCat.label):'—')+'</div><div class="lbl">Самая частая причина &middot; '+(topCat?topCat.value:0)+' раз</div></div>' +
+    '</div>';
+  html += yearChartHtml(byYear);
+  html += chartCardHtml('Аварии по агрегатам (ГПА)', byGpa, 'var(--teal)');
+  html += chartCardHtml('Топ повторяющихся причин / категорий', byCategory, 'var(--navy)', 8);
+  html += chartCardHtml('По типу останова', byType, 'var(--coral)');
+  document.getElementById('dashContent').innerHTML = html;
+  _dashRendered = true;
+}}
 
 Promise.all([
   fetch('accidents.json').then(function(r){{ return r.json(); }}),
