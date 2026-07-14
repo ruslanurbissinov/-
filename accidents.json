@@ -15,7 +15,11 @@
     "recommendation": "При переключении ГПА для бесперебойного питания необходимо запускать резервную ГПЭС и синхронизировать её перед переключением.",
     "damaged": "Отсутствуют",
     "source": "act01_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "ABB",
+      "PDIT 563"
+    ]
   },
   {
     "act": "№1",
@@ -33,7 +37,14 @@
     "recommendation": "Требуется повторная настройка режимов работы камеры сгорания ГПА№3 на зимний период (DLE Mapping).",
     "damaged": "Отсутствуют",
     "source": "act02_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "BE-473",
+      "CDP",
+      "FCV-104/105/107",
+      "FCV-107",
+      "FCV-211"
+    ]
   },
   {
     "act": "№2",
@@ -51,7 +62,14 @@
     "recommendation": "Срочно привлечь специалиста Baker Hughes для повторной настройки DLE Mapping ГПА№3 на зимний период.",
     "damaged": "Отсутствуют",
     "source": "act03_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "BE-473",
+      "CDP",
+      "DLE",
+      "FCV-104/105/107",
+      "FCV-211"
+    ]
   },
   {
     "act": "№3",
@@ -69,7 +87,10 @@
     "recommendation": "Усилить техническое обучение всего персонала КС-1 «Алимтау» по системе пожаротушения CO2.",
     "damaged": "Отсутствуют",
     "source": "act04_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "ESDII"
+    ]
   },
   {
     "act": "№5",
@@ -87,7 +108,10 @@
     "recommendation": "Рассмотреть возможность модернизации логики формирования L33P_ALM на MarkVIe.",
     "damaged": "Отсутствуют",
     "source": "act05_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "XV-784"
+    ]
   },
   {
     "act": "№1",
@@ -106,7 +130,8 @@
     "recommendation": "Установить нагрузочный модуль; заменить регулятор давления газа, трубку и колено слива масла турбокомпрессора ГПЭС№3.",
     "damaged": "Отсутствуют",
     "source": "act06_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": []
   },
   {
     "act": "№2",
@@ -132,6 +157,11 @@
         "status": "выполнено",
         "work_source": "act019_work.pdf"
       }
+    ],
+    "tags": [
+      "MTL",
+      "RB6-2",
+      "RIO"
     ]
   },
   {
@@ -150,7 +180,10 @@
     "recommendation": "Ввести таймер задержки срабатывания сигнала на 500 мс для фильтрации кратковременных потерь связи с кранами ГПА.",
     "damaged": "Отсутствуют",
     "source": "act08_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "XV-4204"
+    ]
   },
   {
     "act": "№1",
@@ -168,7 +201,13 @@
     "recommendation": "Требуется замена соединительного разъема датчика температуры L35166P01 (в наличии отсутствует).",
     "damaged": "Отсутствуют",
     "source": "act09_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "MTL8000",
+      "RIO",
+      "RTD 8106-TI-RT",
+      "UCP1"
+    ]
   },
   {
     "act": "№2",
@@ -187,7 +226,8 @@
     "recommendation": "Модернизировать шкаф управления осушителем воздуха; установить дополнительные ресиверы и обратный клапан.",
     "damaged": "Отсутствуют",
     "source": "act10_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": []
   },
   {
     "act": "№3",
@@ -205,7 +245,12 @@
     "recommendation": "Коммутаторы NTRON 509 системы связи HIMA заменены.",
     "damaged": "Отсутствуют",
     "source": "act11_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "AE 557",
+      "HIMA",
+      "NTRON 509"
+    ]
   },
   {
     "act": "№4",
@@ -223,7 +268,8 @@
     "recommendation": "—",
     "damaged": "Отсутствуют",
     "source": "act12_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": []
   },
   {
     "act": "№1",
@@ -242,7 +288,10 @@
     "recommendation": "Вывести сигналы и параметры САУ теплообменника (положение MOV7501, давление, температура) в SCADA.",
     "damaged": "Отсутствуют",
     "source": "act13_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "MOV7501"
+    ]
   },
   {
     "act": "№1",
@@ -261,7 +310,10 @@
     "recommendation": "Наблюдение за техническими параметрами ГПЭС.",
     "damaged": "Выявлены дефекты (повреждение) выпускных клапанов в цилиндрах №2,4,6,8,9,11 ГПЭС№3",
     "source": "act14_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "PDIT-563"
+    ]
   },
   {
     "act": "№4",
@@ -287,6 +339,9 @@
         "status": "выполнено",
         "work_source": "act16_work.pdf"
       }
+    ],
+    "tags": [
+      "CDP"
     ]
   },
   {
@@ -305,7 +360,10 @@
     "recommendation": "После каждого планового останова проверять и подтягивать кабельные соединения, сверять показания положения кранов с показаниями HMI ГПА.",
     "damaged": "Отсутствуют",
     "source": "act20_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "XV 222"
+    ]
   },
   {
     "act": "№4",
@@ -324,7 +382,8 @@
     "recommendation": "Сменному персоналу усилить контроль за параметрами температуры охлаждающей жидкости и работой АВО антифриза.",
     "damaged": "Отсутствуют",
     "source": "act23_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": []
   },
   {
     "act": "№6",
@@ -342,7 +401,10 @@
     "recommendation": "Сменному персоналу усилить контроль за состоянием концевого выключателя датчика рабочего положения клапана FCV-780 (Hot bypass).",
     "damaged": "Отсутствуют",
     "source": "act22_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "FCV-780"
+    ]
   },
   {
     "act": "№7",
@@ -360,7 +422,11 @@
     "recommendation": "После каждого планового останова проводить проверку и подтяжку кабельных соединений.",
     "damaged": "Отсутствуют",
     "source": "act21_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "TE 403-1A",
+      "TE 403-1B"
+    ]
   },
   {
     "act": "№1",
@@ -378,7 +444,11 @@
     "recommendation": "После каждого планового останова проводить проверку и подтяжку кабельных соединений.",
     "damaged": "Отсутствуют",
     "source": "act24_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "TE 401-1A",
+      "TE 401-1B"
+    ]
   },
   {
     "act": "№2",
@@ -397,7 +467,8 @@
     "recommendation": "Сменному персоналу усилить контроль за параметрами датчика температуры охлаждающей жидкости по тренду в SCADA в режиме реального времени.",
     "damaged": "Отсутствуют",
     "source": "act25_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": []
   },
   {
     "act": "№5",
@@ -415,7 +486,11 @@
     "recommendation": "Сменному персоналу усилить контроль за параметрами газогенератора ГПА.",
     "damaged": "Отсутствуют",
     "source": "act26_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "VT-457",
+      "ГГ 6800"
+    ]
   },
   {
     "act": "№8",
@@ -434,7 +509,10 @@
     "recommendation": "После каждого планового останова проводить проверку вводного автомата ГПЭС.",
     "damaged": "Отсутствуют",
     "source": "act27_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "К51-PR122/P"
+    ]
   },
   {
     "act": "№9",
@@ -453,7 +531,10 @@
     "recommendation": "После каждого планового останова проводить проверку, протяжку кабельных соединений.",
     "damaged": "Отсутствуют",
     "source": "act28_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "CDVR"
+    ]
   },
   {
     "act": "№1",
@@ -471,7 +552,11 @@
     "recommendation": "Во время каждого ТО-4000 м/ч проводить переборку узла крепления несущих плат блока модулей ввода/вывода MTL8000 UCP-1 ГПА.",
     "damaged": "Отсутствует",
     "source": "act29_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "MTL8000",
+      "UCP-1"
+    ]
   },
   {
     "act": "№2",
@@ -491,7 +576,15 @@
     "recommendation": "Усилить контроль за техническим состоянием ИБП №2.",
     "damaged": "Радиоэлектронные компоненты ИБП№1 (резистор, транзисторы в блоке управления) — согласно дефектному акту №11/19 от 16.04.2019",
     "source": "act30_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "ABUS",
+      "ESDV1101",
+      "ESDV1102",
+      "ESDV1201",
+      "ESDV1202",
+      "SCADA"
+    ]
   },
   {
     "act": "№3",
@@ -510,7 +603,8 @@
     "recommendation": "Сменному персоналу усилить контроль за состоянием и параметрами работы ГПЭС№2,3 и АДЭС.",
     "damaged": "Не обнаружено",
     "source": "act31_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": []
   },
   {
     "act": "№4",
@@ -528,7 +622,12 @@
     "recommendation": "Во избежание сбоев в работе ГПА производить тестирование избыточности контроллеров серии HIMatrix, выполнять аналогичные обновления ПО контроллеров в режиме резерва ГПА№1,2.",
     "damaged": "Отсутствуют",
     "source": "act32_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "CPUA",
+      "HIMA",
+      "UCP2"
+    ]
   },
   {
     "act": "№5",
@@ -547,7 +646,13 @@
     "recommendation": "Необходима срочная замена ИБП№1,2, так как отсутствует резерв в случае поломки ИБП№2.",
     "damaged": "Предохранители ИБП№1 (10 шт. по 5 шт. на модуль), 2 силовых модуля типа SUVT/PXP 400V (P/N: 0640-4928F Rev.08), плата управления P/N: 640-2552 Rev.01 ИБП№1",
     "source": "act33_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "HMI",
+      "PXP",
+      "SCADA",
+      "SUVT"
+    ]
   },
   {
     "act": "№6",
@@ -566,6 +671,9 @@
     "recommendation": "Дежурному персоналу при приёмке оборудования проверять все соединения и проводить замеры кабельной продукции мегомметром.",
     "damaged": "Отсутствуют",
     "source": "act34_investigation.pdf",
-    "remediation": []
+    "remediation": [],
+    "tags": [
+      "НУ-640"
+    ]
   }
 ]

@@ -55,6 +55,8 @@
   #fileStatus{font-size:12.5px;color:var(--text-muted);flex-basis:100%;margin-top:8px;}
   #fileStatus.error{color:var(--coral);}
   .tag.match{background:#DCFCE7;color:#166534;}
+  .equip-tags{margin:0 0 8px;}
+  .tag.equip{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:5px;font-weight:600;background:#EDE9FE;color:#5B21B6;margin:0 5px 4px 0;display:inline-block;}
   @media (max-width:600px){.search-row{flex-direction:column;}}
 </style>
 </head>
@@ -83,7 +85,7 @@
     <span class="right">Сортировка по релевантности</span>
   </div>
   <div id="results"><div class="loading">Загрузка данных...</div></div>
-  <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория) &middot; сборка: 2026-07-14 06:56</div>
+  <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория) &middot; сборка: 2026-07-14 07:11</div>
 </div>
 <script>
 var incidents = [];
@@ -180,11 +182,17 @@ function scoreIncident(inc, tokens) {
   for (var q=0;q<tokens.length;q++) { if (isTagToken(tokens[q])) { hasTags = true; break; } }
   var fields = {name:inc.name,cause:inc.cause,category:inc.category,act:inc.act,date:inc.date,gpaStr:inc.gpa.join(' '),measures:inc.measures,conclusion:inc.conclusion,recommendation:inc.recommendation};
   var score=0;
+  var normTags = (inc.tags||[]).map(function(x){ return normalize(x); });
   for (var t=0;t<tokens.length;t++) {
     var tok = tokens[t];
     var tag = isTagToken(tok);
     if (hasTags && !tag) continue;
     var boost = tag ? TAG_BOOST : 1;
+    if (tag) {
+      for (var nt=0;nt<normTags.length;nt++) {
+        if (normTags[nt].indexOf(tok)!==-1 || tok.indexOf(normTags[nt])!==-1) { score += 25; break; }
+      }
+    }
     for (var f=0;f<FIELD_WEIGHTS.length;f++) {
       var fn=FIELD_WEIGHTS[f][0], w=FIELD_WEIGHTS[f][1];
       var text = normalize(fields[fn]);
@@ -223,6 +231,11 @@ function buildCard(inc, tokens, scoreBadge) {
   htmlStr += '</div>';
   htmlStr += '<h3>'+highlight(inc.name, tokens)+'</h3>';
   htmlStr += '<p class="cause"><b>Обстоятельства, при которых произошел останов:</b> '+highlight(inc.cause, tokens)+'</p>';
+  if (inc.tags && inc.tags.length) {
+    var tagBadges = '';
+    for (var tg=0; tg<inc.tags.length; tg++) { tagBadges += '<span class="tag equip">'+highlight(inc.tags[tg], tokens)+'</span>'; }
+    htmlStr += '<p class="equip-tags">'+tagBadges+'</p>';
+  }
   htmlStr += '<button class="toggle-btn" type="button">Показать меры и заключение &#9662;</button>';
   htmlStr += '<div class="details">';
   if (inc.conclusion) { htmlStr += '<p><b>Заключение:</b> '+highlight(inc.conclusion, tokens)+'</p>'; }
@@ -273,17 +286,26 @@ function tokenCoverage(inc, tokens) {
   }
   var causeText = normalize(inc.cause);
   var allText = normalize([inc.name, inc.cause, inc.category, inc.gpa.join(' '), inc.measures, inc.conclusion, inc.recommendation].join(' '));
-  function coverageFor(toks) {
+  var normTags = (inc.tags||[]).map(function(x){ return normalize(x); });
+  function coverageFor(toks, isTags) {
     if (!toks.length) return null;
-    var causeMatched = 0, allMatched = 0;
+    var causeMatched = 0, allMatched = 0, tagMatched = 0;
     for (var j=0;j<toks.length;j++) {
       if (causeText.indexOf(toks[j])!==-1) { causeMatched++; }
       if (allText.indexOf(toks[j])!==-1) { allMatched++; }
+      if (isTags) {
+        for (var nt=0;nt<normTags.length;nt++) {
+          if (normTags[nt].indexOf(toks[j])!==-1 || toks[j].indexOf(normTags[nt])!==-1) { tagMatched++; break; }
+        }
+      }
+    }
+    if (isTags && normTags.length) {
+      return (tagMatched/toks.length)*0.6 + (causeMatched/toks.length)*0.3 + (allMatched/toks.length)*0.1;
     }
     return (causeMatched/toks.length)*0.75 + (allMatched/toks.length)*0.25;
   }
-  var tagCov = coverageFor(tagToks);
-  var wordCov = coverageFor(wordToks);
+  var tagCov = coverageFor(tagToks, true);
+  var wordCov = coverageFor(wordToks, false);
   if (tagCov!==null) { return tagCov; }
   if (wordCov!==null) { return wordCov; }
   return 0;
@@ -525,7 +547,7 @@ Promise.all([
       kind:'incident', act:a.act, date:a.date, time:a.time, gpa:a.gpa, type:a.type,
       category:a.category, name:a.name, cause:a.cause, measures:a.measures,
       conclusion:a.conclusion, recommendation:a.recommendation,
-      remediation:a.remediation||[], source:a.source
+      remediation:a.remediation||[], source:a.source, tags:a.tags||[]
     });
   }
   for (var j=0;j<defects.length;j++) {
