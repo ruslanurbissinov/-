@@ -66,8 +66,11 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
   *{{box-sizing:border-box;}}
   body{{margin:0;background:var(--surface);color:var(--text);font-family:var(--sans);line-height:1.5;}}
   header{{background:linear-gradient(180deg,var(--navy),var(--navy-dark));color:#fff;padding:28px 24px 22px;}}
+  .header-row{{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}}
   header h1{{margin:0 0 4px;font-size:20px;font-weight:600;}}
   header p{{margin:0;font-size:13px;color:#C9D6E5;}}
+  .lang-btn{{flex:0 0 auto;padding:8px 16px;font-size:13px;font-weight:700;border:1px solid rgba(255,255,255,0.35);border-radius:8px;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;}}
+  .lang-btn:hover{{background:rgba(255,255,255,0.18);}}
   .container{{max-width:960px;margin:0 auto;padding:20px 20px 60px;}}
   .toolbar{{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin:-18px 0 20px;box-shadow:0 2px 10px rgba(15,36,64,0.08);}}
   .search-row{{display:flex;gap:10px;margin-bottom:12px;}}
@@ -144,8 +147,13 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
 <header>
-  <h1>Поиск по базе аварийных остановов ГПА</h1>
-  <p>Умная система анализа аварийных остановов и помощи инженерам &middot; КС-1 &laquo;Алимтау&raquo;</p>
+  <div class="header-row">
+    <div>
+      <h1 id="pageTitle">Поиск по базе аварийных остановов ГПА</h1>
+      <p id="pageSubtitle">Умная система анализа аварийных остановов и помощи инженерам &middot; КС-1 &laquo;Алимтау&raquo;</p>
+    </div>
+    <button id="langToggle" type="button" class="lang-btn">EN</button>
+  </div>
 </header>
 <div class="container">
   <div class="tabs">
@@ -158,22 +166,22 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
       <input id="q" type="text" placeholder="Например: свечной кран, потеря пламени, RB6-2, ГПА№2..." autocomplete="off" disabled>
     </div>
     <div class="filters">
-      <select id="fGpa" disabled><option value="">Все ГПА</option></select>
-      <select id="fCat" disabled><option value="">Все категории</option></select>
-      <select id="fYear" disabled><option value="">Все годы</option></select>
+      <select id="fGpa" disabled><option value="" id="fGpaAll">Все ГПА</option></select>
+      <select id="fCat" disabled><option value="" id="fCatAll">Все категории</option></select>
+      <select id="fYear" disabled><option value="" id="fYearAll">Все годы</option></select>
       <button id="reset" type="button" disabled>Сбросить</button>
-      <label class="file-btn" for="reportFile">&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)</label>
+      <label class="file-btn" for="reportFile" id="uploadLabel">&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)</label>
       <input id="reportFile" type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" style="display:none;">
       <span id="fileStatus"></span>
     </div>
   </div>
   <div class="meta-row">
     <span class="left" id="count"></span>
-    <span class="right">Сортировка по релевантности</span>
+    <span class="right" id="sortLabel">Сортировка по релевантности</span>
   </div>
   <div id="recBlock"></div>
   <div id="results"><div class="loading">Загрузка данных...</div></div>
-  <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория)</div>
+  <div class="src-note" id="srcNote">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория)</div>
   </div>
   <div id="dashboardView" style="display:none;">
     <div id="dashContent"><div class="loading">Загрузка данных...</div></div>
@@ -181,6 +189,113 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
 </div>
 <script>
 var incidents = [];
+var LANG = 'ru';
+var BUILD_STAMP = '';
+function FS(ru, en) {{ return LANG==='en' ? en : ru; }}
+var CAT_EN = {{
+  'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
+  'Ложное срабатывание КИП':'False instrumentation trip',
+  'Ложное срабатывание КИП / связь':'False instrumentation trip / communication',
+  'Настройка/калибровка камеры сгорания (DLE)':'Combustor tuning / calibration (DLE)',
+  'Отказ оборудования КИПиА':'Instrumentation & control equipment failure',
+  'Техническая неисправность (вспомогательные системы)':'Technical fault (auxiliary systems)',
+  'Техническая неисправность оборудования':'Equipment technical fault',
+  'Человеческий фактор':'Human factor',
+  'Электросеть / переключение агрегатов':'Power grid / unit switching',
+  'Электросеть / синхронизация агрегатов':'Power grid / unit synchronization',
+  'Дефект (без останова)':'Defect (no shutdown)',
+  'Плановая инспекция / дефект':'Planned inspection / defect'
+}};
+var TYPE_EN = {{'Автоматический':'Automatic','Вынужденный нормальный':'Forced normal'}};
+var GPA_EN = {{'ГПА №1':'GPU #1','ГПА №2':'GPU #2','ГПА №3':'GPU #3'}};
+function trCat(v) {{ return (LANG==='en' && CAT_EN[v]) ? CAT_EN[v] : v; }}
+function trType(v) {{ return (LANG==='en' && TYPE_EN[v]) ? TYPE_EN[v] : v; }}
+function trGpa(v) {{ return (LANG==='en' && GPA_EN[v]) ? GPA_EN[v] : v; }}
+var I18N = {{
+  ru: {{
+    title:'Поиск по базе аварийных остановов ГПА',
+    subtitle:'Умная система анализа аварийных остановов и помощи инженерам &middot; КС-1 &laquo;Алимтау&raquo;',
+    tabSearch:'&#128269; Поиск по авариям', tabDash:'&#128202; Dashboard',
+    searchPlaceholder:'Например: свечной кран, потеря пламени, RB6-2, ГПА№2...',
+    allGpa:'Все ГПА', allCat:'Все категории', allYear:'Все годы', reset:'Сбросить',
+    uploadLabel:'&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)',
+    sortRelevance:'Сортировка по релевантности', loading:'Загрузка данных...',
+    srcNote:'Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория)',
+    circumstances:'Обстоятельства, при которых произошел останов:',
+    showDetails:'Показать меры и заключение &#9662;', hideDetails:'Скрыть детали &#9652;',
+    conclusion:'Заключение:', measuresTaken:'Принятые меры:',
+    preventionMeasures:'Мероприятия по недопущению аналогичного автоматического останова:',
+    docs:'Документы:', openInvestigationAct:'Открыть акт расследования',
+    openWorkAct:'Открыть акт выполненных работ', openDefectAct:'Открыть дефектный акт',
+    nothingFound:'Ничего не найдено с совпадением 25% и выше. Попробуйте другой запрос или сбросьте фильтры.',
+    recTitle:'&#128161; Рекомендация на основе похожих случаев',
+    recMostSimilar:'Наиболее похожий случай:', recAct:'акт', recFrom:'от', recMatch:'совпадение',
+    recWhatToDo:'Что делать:', recFormalRec:'Рекомендация по итогам расследования:',
+    dashStatTotal:'Всего аварийных остановов', dashStatPeriod:'Период наблюдения',
+    dashStatTopGpa:'Чаще всего останавливался', dashStatTopCat:'Самая частая причина', times:'раз',
+    dashYearChart:'Динамика аварийных остановов по годам', dashByGpa:'Аварии по агрегатам (ГПА)',
+    dashTopCat:'Топ повторяющихся причин / категорий', dashByType:'По типу останова', dashNoData:'Нет данных',
+    dashMetricsTitle:'&#128200; Метрики эффективности', dashGoal:'Цель системы:',
+    dashGoalText:'снизить долю повторных аварийных остановов на 40% и сократить время анализа причины с 3&ndash;5 суток (ручной пролистывание архива актов) до 1 рабочего дня за счёт мгновенного поиска похожих случаев по базе.',
+    dashRepeatShare:'Аварий с уже встречавшейся причиной (сейчас, без системы)',
+    dashRepeatCats:'Категорий причин, повторявшихся 2+ раза',
+    dashRepeatTrend:'Динамика повторяемости причин по годам (% от аварий за год)',
+    dashRegistryTitle:'Реестр повторяющихся причин &mdash; кандидаты для системного устранения',
+    dashRegistryEmpty:'Повторяющихся причин пока не выявлено.',
+    dashRiskTitle:'&#128302; Прогноз рисков', dashRiskHow:'Как читать:',
+    dashRiskHowText:'это статистическая эвристика (частота + давность последнего случая + тренд за 2 года), а не обученная ML-модель — на 30 наблюдениях полноценное машинное обучение будет либо переобучаться, либо гадать. Используйте как ориентир для приоритизации осмотров, не как замену технической диагностики.',
+    dashRiskScoring:'Риск-скоринг агрегатов', riskHigh:'Высокий', riskMedium:'Средний', riskLow:'Низкий',
+    dashRiskDetail:'Детализация по агрегатам', riskProbableCause:'вероятная причина:',
+    riskStopAgo:'останов', riskDaysAgo:'дн. назад', riskAvgInterval:'ср. интервал', riskDays:'дн.',
+    dashForecastTitle:'Прогноз срока следующего останова (по всей КС)',
+    forecastAvgLabel:'Средний интервал между авариями за весь период:',
+    forecastSinceLabel:'С последней аварии прошло', forecastMore:'больше', forecastLess:'меньше',
+    forecastElevated:'повышена', forecastNormal:'в пределах нормы',
+    noDataToShow:'Нет данных для отображения.', dashEmpty:'Нет данных для отображения.'
+  }},
+  en: {{
+    title:'GPA Emergency Shutdown Database Search',
+    subtitle:'Smart shutdown analysis and engineer support system &middot; CS-1 &laquo;Alimtau&raquo;',
+    tabSearch:'&#128269; Search Incidents', tabDash:'&#128202; Dashboard',
+    searchPlaceholder:'e.g.: ignition valve, flame loss, RB6-2, GPU#2...',
+    allGpa:'All units', allCat:'All categories', allYear:'All years', reset:'Reset',
+    uploadLabel:'&#128206; Upload incident report (PDF, Word, TXT, photo)',
+    sortRelevance:'Sorted by relevance', loading:'Loading data...',
+    srcNote:'Data loaded from accidents.json + defects.json &middot; reports are stored in the repository root',
+    circumstances:'Circumstances of the shutdown:',
+    showDetails:'Show measures &amp; conclusion &#9662;', hideDetails:'Hide details &#9652;',
+    conclusion:'Conclusion:', measuresTaken:'Measures taken:',
+    preventionMeasures:'Measures to prevent a similar automatic shutdown:',
+    docs:'Documents:', openInvestigationAct:'Open investigation report',
+    openWorkAct:'Open completion report', openDefectAct:'Open defect report',
+    nothingFound:'Nothing found with a 25%+ match. Try a different query or reset the filters.',
+    recTitle:'&#128161; Recommendation based on similar cases',
+    recMostSimilar:'Most similar case:', recAct:'report', recFrom:'dated', recMatch:'match',
+    recWhatToDo:'What to do:', recFormalRec:'Investigation recommendation:',
+    dashStatTotal:'Total emergency shutdowns', dashStatPeriod:'Observation period',
+    dashStatTopGpa:'Most frequently down', dashStatTopCat:'Most common cause', times:'times',
+    dashYearChart:'Shutdowns by year', dashByGpa:'Shutdowns by unit (GPU)',
+    dashTopCat:'Top recurring causes / categories', dashByType:'By shutdown type', dashNoData:'No data',
+    dashMetricsTitle:'&#128200; Efficiency metrics', dashGoal:'System goal:',
+    dashGoalText:'reduce the share of repeat emergency shutdowns by 40% and cut root-cause analysis time from 3&ndash;5 days (manually paging through the report archive) to 1 working day via instant search across similar past cases.',
+    dashRepeatShare:'Shutdowns with an already-seen cause (current baseline, no system)',
+    dashRepeatCats:'Cause categories that recurred 2+ times',
+    dashRepeatTrend:'Repeat-cause trend by year (% of that year&rsquo;s shutdowns)',
+    dashRegistryTitle:'Repeat-cause registry &mdash; candidates for systemic fixes',
+    dashRegistryEmpty:'No recurring causes identified yet.',
+    dashRiskTitle:'&#128302; Risk forecast', dashRiskHow:'How to read this:',
+    dashRiskHowText:'this is a statistical heuristic (frequency + recency of last case + 2-year trend), not a trained ML model — with only 30 observations, a real machine-learning model would either overfit or just guess the majority class. Use it as a prioritization aid, not a substitute for technical diagnostics.',
+    dashRiskScoring:'Unit risk scoring', riskHigh:'High', riskMedium:'Medium', riskLow:'Low',
+    dashRiskDetail:'Per-unit detail', riskProbableCause:'likely cause:',
+    riskStopAgo:'last shutdown', riskDaysAgo:'days ago', riskAvgInterval:'avg. interval', riskDays:'days',
+    dashForecastTitle:'Forecast: next expected shutdown (whole station)',
+    forecastAvgLabel:'Average interval between shutdowns over the whole period:',
+    forecastSinceLabel:'Days since the last shutdown:', forecastMore:'more', forecastLess:'less',
+    forecastElevated:'elevated', forecastNormal:'within normal range',
+    noDataToShow:'No data to display.', dashEmpty:'No data to display.'
+  }}
+}};
+function T(key) {{ return I18N[LANG][key]; }}
 
 function uniqueSorted(arr) {{
   var seen = {{}}, out = [];
@@ -312,53 +427,53 @@ function buildCard(inc, tokens, scoreBadge) {{
   var card = document.createElement('div');
   card.className = 'card';
   var gpaTags = '';
-  for (var g=0;g<inc.gpa.length;g++) {{ gpaTags += '<span class="tag gpa">'+escapeHtml(inc.gpa[g])+'</span>'; }}
+  for (var g=0;g<inc.gpa.length;g++) {{ gpaTags += '<span class="tag gpa">'+escapeHtml(trGpa(inc.gpa[g]))+'</span>'; }}
   var htmlStr = '';
   htmlStr += '<div class="card-top">';
   htmlStr += '<span class="tag act">'+escapeHtml(inc.act)+' &middot; '+escapeHtml(inc.date)+'</span>';
   htmlStr += gpaTags;
-  htmlStr += '<span class="tag cat">'+highlight(inc.category, tokens)+'</span>';
-  htmlStr += '<span class="tag type">'+escapeHtml(inc.type)+'</span>';
+  htmlStr += '<span class="tag cat">'+escapeHtml(trCat(inc.category))+'</span>';
+  htmlStr += '<span class="tag type">'+escapeHtml(trType(inc.type))+'</span>';
   if (scoreBadge) {{ htmlStr += '<span class="tag match">'+escapeHtml(scoreBadge)+'</span>'; }}
   htmlStr += '</div>';
   htmlStr += '<h3>'+highlight(inc.name, tokens)+'</h3>';
-  htmlStr += '<p class="cause"><b>Обстоятельства, при которых произошел останов:</b> '+highlight(inc.cause, tokens)+'</p>';
+  htmlStr += '<p class="cause"><b>'+T('circumstances')+'</b> '+highlight(inc.cause, tokens)+'</p>';
   if (inc.tags && inc.tags.length) {{
     var tagBadges = '';
     for (var tg=0; tg<inc.tags.length; tg++) {{ tagBadges += '<span class="tag equip">'+highlight(inc.tags[tg], tokens)+'</span>'; }}
     htmlStr += '<p class="equip-tags">'+tagBadges+'</p>';
   }}
-  htmlStr += '<button class="toggle-btn" type="button">Показать меры и заключение &#9662;</button>';
+  htmlStr += '<button class="toggle-btn" type="button">'+T('showDetails')+'</button>';
   htmlStr += '<div class="details">';
-  if (inc.conclusion) {{ htmlStr += '<p><b>Заключение:</b> '+highlight(inc.conclusion, tokens)+'</p>'; }}
+  if (inc.conclusion) {{ htmlStr += '<p><b>'+T('conclusion')+'</b> '+highlight(inc.conclusion, tokens)+'</p>'; }}
   var principalMeasures = '';
   if (inc.remediation && inc.remediation.length) {{
     var pmParts = [];
     for (var w=0;w<inc.remediation.length;w++) {{
       var wk = inc.remediation[w];
-      pmParts.push((wk.work_description||'')+' — Акт выполненных работ '+(wk.work_act||'?')+' от '+(wk.work_date||'?')+' ('+(wk.status||'выполнено')+')');
+      pmParts.push((wk.work_description||'')+' — '+FS('Акт выполненных работ','Completion report')+' '+(wk.work_act||'?')+' '+FS('от','dated')+' '+(wk.work_date||'?')+' ('+(wk.status||FS('выполнено','completed'))+')');
     }}
     principalMeasures = pmParts.join('<br>');
   }} else {{
     principalMeasures = inc.measures || '—';
   }}
-  htmlStr += '<p><b>Принятые меры:</b> '+highlight(principalMeasures, tokens)+'</p>';
+  htmlStr += '<p><b>'+T('measuresTaken')+'</b> '+highlight(principalMeasures, tokens)+'</p>';
   if (inc.prevention_measures) {{
-    htmlStr += '<p><b>Мероприятия по недопущению аналогичного автоматического останова:</b> '+highlight(inc.prevention_measures, tokens)+'</p>';
+    htmlStr += '<p><b>'+T('preventionMeasures')+'</b> '+highlight(inc.prevention_measures, tokens)+'</p>';
   }}
   var docLinks = [];
-  if (inc.source) {{ docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">Открыть акт расследования</a>'); }}
+  if (inc.source) {{ docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">'+T('openInvestigationAct')+'</a>'); }}
   if (inc.remediation && inc.remediation.length) {{
     for (var w2=0;w2<inc.remediation.length;w2++) {{
       var wk2 = inc.remediation[w2];
       if (wk2.work_source) {{
-        docLinks.push('<a class="doc-link" href="'+encodeURIComponent(wk2.work_source)+'" target="_blank">Открыть акт выполненных работ</a>');
+        docLinks.push('<a class="doc-link" href="'+encodeURIComponent(wk2.work_source)+'" target="_blank">'+T('openWorkAct')+'</a>');
       }}
     }}
   }}
-  if (inc.defect_source) {{ docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.defect_source)+'" target="_blank">Открыть дефектный акт</a>'); }}
-  if (inc.work_source) {{ docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.work_source)+'" target="_blank">Открыть акт выполненных работ</a>'); }}
-  if (docLinks.length) {{ htmlStr += '<p><b>Документы:</b> '+docLinks.join(' &middot; ')+'</p>'; }}
+  if (inc.defect_source) {{ docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.defect_source)+'" target="_blank">'+T('openDefectAct')+'</a>'); }}
+  if (inc.work_source) {{ docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.work_source)+'" target="_blank">'+T('openWorkAct')+'</a>'); }}
+  if (docLinks.length) {{ htmlStr += '<p><b>'+T('docs')+'</b> '+docLinks.join(' &middot; ')+'</p>'; }}
   htmlStr += '</div>';
   card.innerHTML = htmlStr;
   (function(cardEl){{
@@ -366,8 +481,8 @@ function buildCard(inc, tokens, scoreBadge) {{
     var det = cardEl.querySelector('.details');
     btn.addEventListener('click', function(){{
       var isOpen = det.className.indexOf('open')!==-1;
-      if (isOpen) {{ det.className='details'; btn.innerHTML='Показать меры и заключение &#9662;'; }}
-      else {{ det.className='details open'; btn.innerHTML='Скрыть детали &#9652;'; }}
+      if (isOpen) {{ det.className='details'; btn.innerHTML=T('showDetails'); }}
+      else {{ det.className='details open'; btn.innerHTML=T('hideDetails'); }}
     }});
   }})(card);
   return card;
@@ -433,16 +548,19 @@ function buildRecommendation(scored) {{
     measuresText = top.measures || '';
   }}
   var html = '<div class="rec-block">';
-  html += '<div class="rec-title">&#128161; Рекомендация на основе похожих случаев</div>';
-  html += '<p class="rec-line"><b>Наиболее похожий случай:</b> акт '+escapeHtml(top.act)+' от '+escapeHtml(top.date)+' &middot; совпадение '+pctRounded+'% &middot; '+escapeHtml(top.category)+'</p>';
+  html += '<div class="rec-title">'+T('recTitle')+'</div>';
+  html += '<p class="rec-line"><b>'+T('recMostSimilar')+'</b> '+T('recAct')+' '+escapeHtml(top.act)+' '+T('recFrom')+' '+escapeHtml(top.date)+' &middot; '+T('recMatch')+' '+pctRounded+'% &middot; '+escapeHtml(trCat(top.category))+'</p>';
   if (measuresText) {{
-    html += '<p class="rec-line"><b>Что делать:</b> '+escapeHtml(measuresText)+'</p>';
+    html += '<p class="rec-line"><b>'+T('recWhatToDo')+'</b> '+escapeHtml(measuresText)+'</p>';
   }}
   if (top.recommendation) {{
-    html += '<p class="rec-line"><b>Рекомендация по итогам расследования:</b> '+escapeHtml(top.recommendation)+'</p>';
+    html += '<p class="rec-line"><b>'+T('recFormalRec')+'</b> '+escapeHtml(top.recommendation)+'</p>';
   }}
   if (repeatCat && repeatCount >= 2) {{
-    html += '<p class="rec-note">&#9888; Причина &laquo;'+escapeHtml(repeatCat)+'&raquo; встречается в '+repeatCount+' из '+top3.length+' лучших совпадений — похоже на повторяющуюся системную проблему, стоит проверить не только текущий останов, но и провести системную диагностику.</p>';
+    html += '<p class="rec-note">&#9888; ' + FS(
+      'Причина &laquo;'+escapeHtml(trCat(repeatCat))+'&raquo; встречается в '+repeatCount+' из '+top3.length+' лучших совпадений — похоже на повторяющуюся системную проблему, стоит проверить не только текущий останов, но и провести системную диагностику.',
+      'Cause &laquo;'+escapeHtml(trCat(repeatCat))+'&raquo; appears in '+repeatCount+' of the top '+top3.length+' matches — this looks like a recurring systemic issue. Consider a broader technical check, not just fixing this one shutdown.'
+    ) + '</p>';
   }}
   html += '</div>';
   return html;
@@ -476,17 +594,17 @@ function render() {{
     usedFallback = true;
   }}
   scored.sort(function(a,b){{ if (b.pct!==a.pct) {{ return b.pct-a.pct; }} return b.score-a.score; }});
-  document.getElementById('count').innerHTML = 'Найдено: <b>'+scored.length+'</b> из '+incidents.length+(tokens.length?' (схожесть от 100% до 25%)'+(usedFallback?' &middot; по смыслу, точных тегов не найдено':''):'');
+  document.getElementById('count').innerHTML = FS('Найдено: ','Found: ')+'<b>'+scored.length+'</b> '+FS('из','of')+' '+incidents.length+(tokens.length?FS(' (схожесть от 100% до 25%)',' (25\u2013100% match)')+(usedFallback?FS(' \u00b7 по смыслу, точных тегов не найдено',' \u00b7 no exact tags, matched by meaning'):''):'');
   var recBox = document.getElementById('recBlock');
   recBox.innerHTML = (tokens.length && scored.length) ? buildRecommendation(scored) : '';
   var box = document.getElementById('results');
   box.innerHTML = '';
   if (scored.length===0) {{
-    box.innerHTML = '<div class="empty"><div>&empty;</div>Ничего не найдено с совпадением 25% и выше. Попробуйте другой запрос или сбросьте фильтры.</div>';
+    box.innerHTML = '<div class="empty"><div>&empty;</div>'+T('nothingFound')+'</div>';
     return;
   }}
   for (var s=0;s<scored.length;s++) {{
-    var badge = tokens.length ? ('Схожесть '+Math.round(100*scored[s].pct)+'%') : null;
+    var badge = tokens.length ? (FS('Схожесть ','Match ')+Math.round(100*scored[s].pct)+'%') : null;
     box.appendChild(buildCard(scored[s].inc, tokens, badge));
   }}
 }}
@@ -561,7 +679,7 @@ function extractTagsFromText(text) {{
 }}
 function appendReportText(text) {{
   var cleaned = (text || '').replace(/[ \\t]+/g, ' ').replace(/\\n{{3,}}/g, '\\n\\n').trim();
-  if (!cleaned) {{ setFileStatus('В файле не найдено текста для поиска.', true); return; }}
+  if (!cleaned) {{ setFileStatus(FS('В файле не найдено текста для поиска.', 'No searchable text found in the file.'), true); return; }}
   var circ = extractCircumstancesSection(cleaned);
   var scopeText = circ && circ.length > 30 ? circ : cleaned.slice(0, 3000);
   var foundTags = extractTagsFromText(scopeText);
@@ -571,13 +689,13 @@ function appendReportText(text) {{
     finalText = foundTags.join(' ');
     document.getElementById('q').value = finalText;
     render();
-    setFileStatus('Готово — из файла распознаны теги (' + foundTags.join(', ') + '), поиск выполнен по ним.');
+    setFileStatus(FS('Готово — из файла распознаны теги (', 'Done — recognized tags from the file (') + foundTags.join(', ') + FS('), поиск выполнен по ним.', '), searched using them.'));
   }} else {{
     finalText = (circ && circ.length > 30) ? circ + '\\n' + cleaned.slice(0, 2500) : cleaned;
     if (finalText.length > 4500) {{ finalText = finalText.slice(0, 4500); }}
     document.getElementById('q').value = finalText;
     render();
-    setFileStatus('Теговых номеров в файле не найдено — показаны похожие случаи по смыслу текста.');
+    setFileStatus(FS('Теговых номеров в файле не найдено — показаны похожие случаи по смыслу текста.', 'No tag numbers found in the file — showing similar cases matched by meaning.'));
   }}
 }}
 function looksGarbled(text) {{
@@ -590,9 +708,9 @@ function looksGarbled(text) {{
 }}
 function ocrPdfPages(pdf) {{
   var maxPages = Math.min(pdf.numPages, 8);
-  setFileStatus('В PDF нет текстового слоя (это скан) — распознаём как изображение, страниц: ' + maxPages + '. Это может занять пару минут при первой загрузке...');
+  setFileStatus(FS('В PDF нет текстового слоя (это скан) — распознаём как изображение, страниц: ', 'The PDF has no text layer (it is a scan) — recognizing as an image, pages: ') + maxPages + FS('. Это может занять пару минут при первой загрузке...', '. This may take a couple of minutes on first load...'));
   loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js', function(err){{
-    if (err) {{ setFileStatus('Не удалось загрузить библиотеку распознавания текста (нет сети?).', true); return; }}
+    if (err) {{ setFileStatus(FS('Не удалось загрузить библиотеку распознавания текста (нет сети?).', 'Failed to load the text-recognition library (no network?).'), true); return; }}
     window.Tesseract.createWorker(['rus','eng']).then(function(worker){{
       var allText = [];
       function processPage(p) {{
@@ -600,13 +718,13 @@ function ocrPdfPages(pdf) {{
           worker.terminate();
           var combined = allText.join('\\n');
           if (combined.replace(/\\s+/g,'').length < 15) {{
-            setFileStatus('Не удалось распознать текст на странице(ах) — качество скана слишком низкое. Попробуйте вписать обстоятельства вручную в поле поиска.', true);
+            setFileStatus(FS('Не удалось распознать текст на странице(ах) — качество скана слишком низкое. Попробуйте вписать обстоятельства вручную в поле поиска.', 'Could not recognize text on the page(s) — scan quality is too low. Try typing the circumstances into the search field manually.'), true);
             return;
           }}
           appendReportText(combined);
           return;
         }}
-        setFileStatus('Распознаём страницу ' + p + ' из ' + maxPages + '...');
+        setFileStatus(FS('Распознаём страницу ', 'Recognizing page ') + p + FS(' из ', ' of ') + maxPages + '...');
         pdf.getPage(p).then(function(page){{
           var viewport = page.getViewport({{scale: 3}});
           var canvas = document.createElement('canvas');
@@ -622,24 +740,24 @@ function ocrPdfPages(pdf) {{
         }}).catch(function(){{ processPage(p + 1); }});
       }}
       processPage(1);
-    }}).catch(function(e){{ setFileStatus('Не удалось запустить распознавание текста: ' + e.message, true); }});
+    }}).catch(function(e){{ setFileStatus(FS('Не удалось запустить распознавание текста: ', 'Failed to start text recognition: ') + e.message, true); }});
   }});
 }}
 function handleReportFile(file) {{
   try {{
   if (!file) return;
   var name = file.name.toLowerCase();
-  setFileStatus('Обработка файла «' + file.name + '»...');
+  setFileStatus(FS('Обработка файла «', 'Processing file "') + file.name + FS('»...', '"...'));
   if (name.endsWith('.txt')) {{
     var r = new FileReader();
     r.onload = function(){{ appendReportText(r.result); }};
-    r.onerror = function(){{ setFileStatus('Не удалось прочитать файл.', true); }};
+    r.onerror = function(){{ setFileStatus(FS('Не удалось прочитать файл.', 'Failed to read the file.'), true); }};
     r.readAsText(file);
   }} else if (name.endsWith('.pdf')) {{
     loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', function(err){{
-      if (err) {{ setFileStatus('Не удалось загрузить библиотеку для чтения PDF (нет сети?).', true); return; }}
+      if (err) {{ setFileStatus(FS('Не удалось загрузить библиотеку для чтения PDF (нет сети?).', 'Failed to load the PDF-reading library (no network?).'), true); return; }}
       var pdfjsLib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
-      if (!pdfjsLib) {{ setFileStatus('Библиотека для чтения PDF загрузилась некорректно. Обновите страницу и попробуйте снова.', true); return; }}
+      if (!pdfjsLib) {{ setFileStatus(FS('Библиотека для чтения PDF загрузилась некорректно. Обновите страницу и попробуйте снова.', 'The PDF-reading library loaded incorrectly. Refresh the page and try again.'), true); return; }}
       window.pdfjsLib = pdfjsLib;
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
       var reader = new FileReader();
@@ -670,45 +788,45 @@ function handleReportFile(file) {{
             }} else {{
               appendReportText(full);
             }}
-          }}).catch(function(e){{ setFileStatus('Не удалось прочитать текст со страниц PDF: ' + e.message, true); }});
-        }}).catch(function(e){{ setFileStatus('Не удалось разобрать PDF-файл: ' + e.message, true); }});
+          }}).catch(function(e){{ setFileStatus(FS('Не удалось прочитать текст со страниц PDF: ', 'Failed to read text from the PDF pages: ') + e.message, true); }});
+        }}).catch(function(e){{ setFileStatus(FS('Не удалось разобрать PDF-файл: ', 'Failed to parse the PDF file: ') + e.message, true); }});
       }};
-      reader.onerror = function(){{ setFileStatus('Не удалось прочитать файл с диска.', true); }};
+      reader.onerror = function(){{ setFileStatus(FS('Не удалось прочитать файл с диска.', 'Failed to read the file from disk.'), true); }};
       reader.readAsArrayBuffer(file);
     }});
   }} else if (name.endsWith('.docx')) {{
     loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.11.0/mammoth.browser.min.js', function(err){{
-      if (err) {{ setFileStatus('Не удалось загрузить библиотеку для чтения Word (нет сети?).', true); return; }}
+      if (err) {{ setFileStatus(FS('Не удалось загрузить библиотеку для чтения Word (нет сети?).', 'Failed to load the Word-reading library (no network?).'), true); return; }}
       var reader = new FileReader();
       reader.onload = function(){{
         window.mammoth.extractRawText({{arrayBuffer: reader.result}}).then(function(result){{
           appendReportText(result.value);
-        }}).catch(function(e){{ setFileStatus('Не удалось разобрать файл Word: ' + e.message, true); }});
+        }}).catch(function(e){{ setFileStatus(FS('Не удалось разобрать файл Word: ', 'Failed to parse the Word file: ') + e.message, true); }});
       }};
-      reader.onerror = function(){{ setFileStatus('Не удалось прочитать файл с диска.', true); }};
+      reader.onerror = function(){{ setFileStatus(FS('Не удалось прочитать файл с диска.', 'Failed to read the file from disk.'), true); }};
       reader.readAsArrayBuffer(file);
     }});
   }} else if (name.match(/\\.(png|jpe?g)$/)) {{
-    setFileStatus('Распознаём текст на фото — это может занять минуту (загружается модель распознавания)...');
+    setFileStatus(FS('Распознаём текст на фото — это может занять минуту (загружается модель распознавания)...', 'Recognizing text in the photo — this may take a minute (loading the recognition model)...'));
     loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js', function(err){{
-      if (err) {{ setFileStatus('Не удалось загрузить библиотеку распознавания текста (нет сети?).', true); return; }}
+      if (err) {{ setFileStatus(FS('Не удалось загрузить библиотеку распознавания текста (нет сети?).', 'Failed to load the text-recognition library (no network?).'), true); return; }}
       window.Tesseract.createWorker(['rus','eng']).then(function(worker){{
         worker.recognize(file).then(function(result){{
           var txt = result.data.text || '';
           worker.terminate();
           if (txt.replace(/\\s+/g,'').length < 15) {{
-            setFileStatus('Не удалось распознать текст на фото — качество снимка слишком низкое. Попробуйте сфотографировать чётче или вписать обстоятельства вручную.', true);
+            setFileStatus(FS('Не удалось распознать текст на фото — качество снимка слишком низкое. Попробуйте сфотографировать чётче или вписать обстоятельства вручную.', 'Could not recognize text in the photo — image quality is too low. Try a sharper photo or type the circumstances manually.'), true);
             return;
           }}
           appendReportText(txt);
-        }}).catch(function(e){{ setFileStatus('Не удалось распознать текст на фото: ' + e.message, true); worker.terminate(); }});
-      }}).catch(function(e){{ setFileStatus('Не удалось запустить распознавание текста: ' + e.message, true); }});
+        }}).catch(function(e){{ setFileStatus(FS('Не удалось распознать текст на фото: ', 'Failed to recognize text in the photo: ') + e.message, true); worker.terminate(); }});
+      }}).catch(function(e){{ setFileStatus(FS('Не удалось запустить распознавание текста: ', 'Failed to start text recognition: ') + e.message, true); }});
     }});
   }} else {{
-    setFileStatus('Формат не поддерживается. Загрузите PDF, DOCX, TXT, JPG или PNG.', true);
+    setFileStatus(FS('Формат не поддерживается. Загрузите PDF, DOCX, TXT, JPG или PNG.', 'Unsupported format. Please upload a PDF, DOCX, TXT, JPG, or PNG.'), true);
   }}
   }} catch (e) {{
-    setFileStatus('Непредвиденная ошибка при обработке файла: ' + e.message, true);
+    setFileStatus(FS('Непредвиденная ошибка при обработке файла: ', 'Unexpected error while processing the file: ') + e.message, true);
   }}
 }}
 document.getElementById('reportFile').addEventListener('change', function(e){{
@@ -725,6 +843,34 @@ function switchTab(tab) {{
 }}
 document.getElementById('tabSearchBtn').addEventListener('click', function(){{ switchTab('search'); }});
 document.getElementById('tabDashBtn').addEventListener('click', function(){{ switchTab('dash'); }});
+
+function applyLanguage() {{
+  document.getElementById('pageTitle').textContent = T('title');
+  document.getElementById('pageSubtitle').innerHTML = T('subtitle');
+  document.getElementById('tabSearchBtn').innerHTML = T('tabSearch');
+  document.getElementById('tabDashBtn').innerHTML = T('tabDash');
+  document.getElementById('q').placeholder = T('searchPlaceholder');
+  document.getElementById('fGpaAll').textContent = T('allGpa');
+  document.getElementById('fCatAll').textContent = T('allCat');
+  document.getElementById('fYearAll').textContent = T('allYear');
+  document.getElementById('reset').textContent = T('reset');
+  document.getElementById('uploadLabel').innerHTML = T('uploadLabel');
+  document.getElementById('sortLabel').textContent = T('sortRelevance');
+  document.getElementById('srcNote').innerHTML = T('srcNote') + (BUILD_STAMP ? ' &middot; ' + (LANG==='ru'?'сборка':'build') + ': ' + BUILD_STAMP : '');
+  document.getElementById('langToggle').textContent = LANG==='ru' ? 'EN' : 'RU';
+  document.documentElement.lang = LANG;
+  var gpaOpts = document.querySelectorAll('#fGpa option[value]:not([value=""])');
+  for (var i=0;i<gpaOpts.length;i++) {{ gpaOpts[i].textContent = trGpa(gpaOpts[i].value); }}
+  var catOpts = document.querySelectorAll('#fCat option[value]:not([value=""])');
+  for (var j=0;j<catOpts.length;j++) {{ catOpts[j].textContent = trCat(catOpts[j].value); }}
+  render();
+  _dashRendered = false;
+  if (document.getElementById('dashboardView').style.display !== 'none') {{ renderDashboard(); }}
+}}
+document.getElementById('langToggle').addEventListener('click', function(){{
+  LANG = (LANG==='ru') ? 'en' : 'ru';
+  applyLanguage();
+}});
 
 function countBy(list, getterFn) {{
   var map = {{}}, order = [];
@@ -743,18 +889,19 @@ function countBy(list, getterFn) {{
   arr.sort(function(a,b){{ return b.value - a.value; }});
   return arr;
 }}
-function barRowHtml(item, maxVal, color) {{
+function barRowHtml(item, maxVal, color, translateFn) {{
   var pct = maxVal>0 ? Math.max(2, Math.round(100*item.value/maxVal)) : 2;
-  return '<div class="bar-row"><div class="bar-label" title="'+escapeHtml(item.label)+'">'+escapeHtml(item.label)+'</div>' +
+  var label = translateFn ? translateFn(item.label) : item.label;
+  return '<div class="bar-row"><div class="bar-label" title="'+escapeHtml(label)+'">'+escapeHtml(label)+'</div>' +
     '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+color+';"></div></div>' +
     '<div class="bar-val">'+item.value+'</div></div>';
 }}
-function chartCardHtml(title, data, color, limit) {{
+function chartCardHtml(title, data, color, limit, translateFn) {{
   var top = limit ? data.slice(0, limit) : data;
   var maxVal = top.length ? top[0].value : 0;
   var html = '<div class="chart-card"><h4>'+escapeHtml(title)+'</h4>';
-  if (!top.length) {{ html += '<div style="color:var(--text-muted);font-size:13px;">Нет данных</div>'; }}
-  for (var i=0;i<top.length;i++) {{ html += barRowHtml(top[i], maxVal, color); }}
+  if (!top.length) {{ html += '<div style="color:var(--text-muted);font-size:13px;">'+T('dashNoData')+'</div>'; }}
+  for (var i=0;i<top.length;i++) {{ html += barRowHtml(top[i], maxVal, color, translateFn); }}
   html += '</div>';
   return html;
 }}
@@ -762,7 +909,7 @@ function yearChartHtml(data) {{
   var sorted = data.slice().sort(function(a,b){{ return a.label < b.label ? -1 : (a.label > b.label ? 1 : 0); }});
   var maxVal = 0;
   for (var i=0;i<sorted.length;i++) {{ if (sorted[i].value>maxVal) maxVal = sorted[i].value; }}
-  var html = '<div class="chart-card"><h4>Динамика аварийных остановов по годам</h4><div class="yearbars">';
+  var html = '<div class="chart-card"><h4>'+T('dashYearChart')+'</h4><div class="yearbars">';
   for (var i=0;i<sorted.length;i++) {{
     var h = maxVal>0 ? Math.max(6, Math.round(100*sorted[i].value/maxVal)) : 6;
     html += '<div class="yearbar-col"><div class="yearbar-val">'+sorted[i].value+'</div>' +
@@ -799,11 +946,11 @@ function computeRepeatRateByYear(accs) {{
 }}
 function percentYearChartHtml(data, title) {{
   var html = '<div class="chart-card"><h4>'+escapeHtml(title)+'</h4><div class="yearbars">';
-  if (!data.length) {{ html += '<div style="color:var(--text-muted);font-size:13px;">Нет данных</div>'; }}
+  if (!data.length) {{ html += '<div style="color:var(--text-muted);font-size:13px;">'+T('dashNoData')+'</div>'; }}
   for (var i=0;i<data.length;i++) {{
     var h = Math.max(4, data[i].value);
     html += '<div class="yearbar-col"><div class="yearbar-val">'+data[i].value+'%</div>' +
-      '<div class="yearbar" style="height:'+h+'%;background:var(--coral);" title="'+data[i].repeat+' из '+data[i].total+'"></div>' +
+      '<div class="yearbar" style="height:'+h+'%;background:var(--coral);" title="'+data[i].repeat+' '+FS('из','of')+' '+data[i].total+'"></div>' +
       '<div class="yearbar-lbl">'+escapeHtml(data[i].label)+'</div></div>';
   }}
   html += '</div></div>';
@@ -827,12 +974,12 @@ function computeRepeatRegistry(accs) {{
   return rows;
 }}
 function repeatRegistryHtml(rows) {{
-  var html = '<div class="chart-card"><h4>Реестр повторяющихся причин &mdash; кандидаты для системного устранения</h4>';
-  if (!rows.length) {{ html += '<div style="color:var(--text-muted);font-size:13px;">Повторяющихся причин пока не выявлено.</div>'; }}
+  var html = '<div class="chart-card"><h4>'+T('dashRegistryTitle')+'</h4>';
+  if (!rows.length) {{ html += '<div style="color:var(--text-muted);font-size:13px;">'+T('dashRegistryEmpty')+'</div>'; }}
   for (var i=0;i<rows.length;i++) {{
     var r = rows[i];
-    html += '<div class="reg-row"><div class="reg-cat">'+escapeHtml(r.category)+'</div>' +
-      '<div class="reg-count">'+r.count+' раз</div>' +
+    html += '<div class="reg-row"><div class="reg-cat">'+escapeHtml(trCat(r.category))+'</div>' +
+      '<div class="reg-count">'+r.count+' '+T('times')+'</div>' +
       '<div class="reg-dates">'+escapeHtml(r.first)+' &rarr; '+escapeHtml(r.last)+'</div></div>';
   }}
   html += '</div>';
@@ -850,9 +997,9 @@ function computeIntervalStats(datesSorted) {{
   return {{avg:avg, min:min, max:max, n:diffs.length}};
 }}
 function riskLevel(score) {{
-  if (score>=60) return {{text:'Высокий', color:'var(--coral)'}};
-  if (score>=35) return {{text:'Средний', color:'var(--amber)'}};
-  return {{text:'Низкий', color:'var(--teal)'}};
+  if (score>=60) return {{text:T('riskHigh'), color:'var(--coral)'}};
+  if (score>=35) return {{text:T('riskMedium'), color:'var(--amber)'}};
+  return {{text:T('riskLow'), color:'var(--teal)'}};
 }}
 function computeRiskForecast(accs) {{
   var now = new Date();
@@ -903,29 +1050,29 @@ function computeRiskForecast(accs) {{
   return {{items: items, globalStats: globalStats, daysSinceGlobalLast: daysSinceGlobalLast}};
 }}
 function riskForecastHtml(fc) {{
-  var html = '<h3 style="margin:22px 0 12px;font-size:15.5px;color:var(--navy);border-top:1px solid var(--border);padding-top:20px;">&#128302; Прогноз рисков</h3>';
-  html += '<div class="info-callout"><b>Как читать:</b> это статистическая эвристика (частота + давность последнего случая + тренд за 2 года), а не обученная ML-модель — на 30 наблюдениях полноценное машинное обучение будет либо переобучаться, либо гадать. Используйте как ориентир для приоритизации осмотров, не как замену технической диагностики.</div>';
-  html += '<div class="chart-card"><h4>Риск-скоринг агрегатов</h4>';
+  var html = '<h3 style="margin:22px 0 12px;font-size:15.5px;color:var(--navy);border-top:1px solid var(--border);padding-top:20px;">'+T('dashRiskTitle')+'</h3>';
+  html += '<div class="info-callout"><b>'+T('dashRiskHow')+'</b> '+T('dashRiskHowText')+'</div>';
+  html += '<div class="chart-card"><h4>'+T('dashRiskScoring')+'</h4>';
   for (var i=0;i<fc.items.length;i++) {{
     var it = fc.items[i];
     var lvl = riskLevel(it.score);
-    html += '<div class="bar-row"><div class="bar-label" style="flex-basis:100px;">'+escapeHtml(it.gpa)+'</div>' +
+    html += '<div class="bar-row"><div class="bar-label" style="flex-basis:100px;">'+escapeHtml(trGpa(it.gpa))+'</div>' +
       '<div class="bar-track"><div class="bar-fill" style="width:'+it.score+'%;background:'+lvl.color+';"></div></div>' +
       '<div class="bar-val" style="flex-basis:64px;color:'+lvl.color+';">'+lvl.text+'</div></div>';
   }}
-  html += '</div><div class="chart-card"><h4>Детализация по агрегатам</h4>';
+  html += '</div><div class="chart-card"><h4>'+T('dashRiskDetail')+'</h4>';
   for (var j=0;j<fc.items.length;j++) {{
     var it2 = fc.items[j];
-    html += '<div class="reg-row"><div class="reg-cat">'+escapeHtml(it2.gpa)+' &middot; вероятная причина: '+(it2.topCategory?escapeHtml(it2.topCategory):'&mdash;')+'</div>' +
-      '<div class="reg-dates">останов '+it2.daysSince+' дн. назад &middot; ср. интервал '+it2.avgInterval+' дн.</div></div>';
+    html += '<div class="reg-row"><div class="reg-cat">'+escapeHtml(trGpa(it2.gpa))+' &middot; '+T('riskProbableCause')+' '+(it2.topCategory?escapeHtml(trCat(it2.topCategory)):'&mdash;')+'</div>' +
+      '<div class="reg-dates">'+T('riskStopAgo')+' '+it2.daysSince+' '+T('riskDaysAgo')+' &middot; '+T('riskAvgInterval')+' '+it2.avgInterval+' '+T('riskDays')+'</div></div>';
   }}
   html += '</div>';
   if (fc.globalStats) {{
     var gs = fc.globalStats;
     var overdue = fc.daysSinceGlobalLast > gs.avg;
-    html += '<div class="chart-card"><h4>Прогноз срока следующего останова (по всей КС)</h4>' +
-      '<p class="rec-line">Средний интервал между авариями за весь период: <b>'+Math.round(gs.avg)+' дн.</b> (мин '+Math.round(gs.min)+', макс '+Math.round(gs.max)+', на основе '+gs.n+' интервалов).</p>' +
-      '<p class="rec-line">С последней аварии прошло <b>'+fc.daysSinceGlobalLast+' дн.</b> — это '+(overdue?'больше':'меньше')+' среднего интервала, вероятность нового останова '+(overdue?'<b>повышена</b>':'в пределах нормы')+'.</p>' +
+    html += '<div class="chart-card"><h4>'+T('dashForecastTitle')+'</h4>' +
+      '<p class="rec-line">'+T('forecastAvgLabel')+' <b>'+Math.round(gs.avg)+' '+T('riskDays')+'</b> ('+FS('мин','min')+' '+Math.round(gs.min)+', '+FS('макс','max')+' '+Math.round(gs.max)+', '+FS('на основе '+gs.n+' интервалов','based on '+gs.n+' intervals')+').</p>' +
+      '<p class="rec-line">'+T('forecastSinceLabel')+' <b>'+fc.daysSinceGlobalLast+' '+T('riskDays')+'</b> — '+FS('это','which is')+' '+(overdue?T('forecastMore'):T('forecastLess'))+' '+FS('среднего интервала, вероятность нового останова','than the average interval — probability of a new shutdown is')+' '+(overdue?'<b>'+T('forecastElevated')+'</b>':T('forecastNormal'))+'.</p>' +
       '</div>';
   }}
   return html;
@@ -935,7 +1082,7 @@ function renderDashboard() {{
   var accs = [];
   for (var i=0;i<incidents.length;i++) {{ if (incidents[i].kind==='incident') accs.push(incidents[i]); }}
   if (!accs.length) {{
-    document.getElementById('dashContent').innerHTML = '<div class="empty"><div>&#9888;</div>Нет данных для отображения.</div>';
+    document.getElementById('dashContent').innerHTML = '<div class="empty"><div>&#9888;</div>'+T('dashEmpty')+'</div>';
     return;
   }}
   var byGpa = countBy(accs, function(inc){{ return inc.gpa; }});
@@ -950,15 +1097,15 @@ function renderDashboard() {{
   var maxY = years.length ? years.reduce(function(a,b){{ return a>b?a:b; }}) : '—';
 
   var html = '<div class="dash-grid">' +
-    '<div class="stat-card"><div class="num">'+accs.length+'</div><div class="lbl">Всего аварийных остановов</div></div>' +
-    '<div class="stat-card"><div class="num">'+minY+'&ndash;'+maxY+'</div><div class="lbl">Период наблюдения</div></div>' +
-    '<div class="stat-card"><div class="num">'+(topGpa?escapeHtml(topGpa.label):'—')+'</div><div class="lbl">Чаще всего останавливался &middot; '+(topGpa?topGpa.value:0)+' раз</div></div>' +
-    '<div class="stat-card"><div class="num" style="font-size:14.5px;">'+(topCat?escapeHtml(topCat.label):'—')+'</div><div class="lbl">Самая частая причина &middot; '+(topCat?topCat.value:0)+' раз</div></div>' +
+    '<div class="stat-card"><div class="num">'+accs.length+'</div><div class="lbl">'+T('dashStatTotal')+'</div></div>' +
+    '<div class="stat-card"><div class="num">'+minY+'&ndash;'+maxY+'</div><div class="lbl">'+T('dashStatPeriod')+'</div></div>' +
+    '<div class="stat-card"><div class="num">'+(topGpa?escapeHtml(trGpa(topGpa.label)):'—')+'</div><div class="lbl">'+T('dashStatTopGpa')+' &middot; '+(topGpa?topGpa.value:0)+' '+T('times')+'</div></div>' +
+    '<div class="stat-card"><div class="num" style="font-size:14.5px;">'+(topCat?escapeHtml(trCat(topCat.label)):'—')+'</div><div class="lbl">'+T('dashStatTopCat')+' &middot; '+(topCat?topCat.value:0)+' '+T('times')+'</div></div>' +
     '</div>';
   html += yearChartHtml(byYear);
-  html += chartCardHtml('Аварии по агрегатам (ГПА)', byGpa, 'var(--teal)');
-  html += chartCardHtml('Топ повторяющихся причин / категорий', byCategory, 'var(--navy)', 8);
-  html += chartCardHtml('По типу останова', byType, 'var(--coral)');
+  html += chartCardHtml(T('dashByGpa'), byGpa, 'var(--teal)', null, trGpa);
+  html += chartCardHtml(T('dashTopCat'), byCategory, 'var(--navy)', 8, trCat);
+  html += chartCardHtml(T('dashByType'), byType, 'var(--coral)', null, trType);
 
   var repeatByYear = computeRepeatRateByYear(accs);
   var registry = computeRepeatRegistry(accs);
@@ -966,13 +1113,13 @@ function renderDashboard() {{
   for (var rr=0; rr<repeatByYear.length; rr++) {{ totalRepeatIncidents += repeatByYear[rr].repeat; }}
   var repeatSharePct = accs.length ? Math.round(100*totalRepeatIncidents/accs.length) : 0;
 
-  html += '<h3 style="margin:22px 0 12px;font-size:15.5px;color:var(--navy);border-top:1px solid var(--border);padding-top:20px;">&#128200; Метрики эффективности</h3>';
-  html += '<div class="info-callout"><b>Цель системы:</b> снизить долю повторных аварийных остановов на 40% и сократить время анализа причины с 3&ndash;5 суток (ручной пролистывание архива актов) до 1 рабочего дня за счёт мгновенного поиска похожих случаев по базе.</div>';
+  html += '<h3 style="margin:22px 0 12px;font-size:15.5px;color:var(--navy);border-top:1px solid var(--border);padding-top:20px;">'+T('dashMetricsTitle')+'</h3>';
+  html += '<div class="info-callout"><b>'+T('dashGoal')+'</b> '+T('dashGoalText')+'</div>';
   html += '<div class="dash-grid">' +
-    '<div class="stat-card"><div class="num">'+repeatSharePct+'%</div><div class="lbl">Аварий с уже встречавшейся причиной (сейчас, без системы)</div></div>' +
-    '<div class="stat-card"><div class="num">'+registry.length+'</div><div class="lbl">Категорий причин, повторявшихся 2+ раза</div></div>' +
+    '<div class="stat-card"><div class="num">'+repeatSharePct+'%</div><div class="lbl">'+T('dashRepeatShare')+'</div></div>' +
+    '<div class="stat-card"><div class="num">'+registry.length+'</div><div class="lbl">'+T('dashRepeatCats')+'</div></div>' +
     '</div>';
-  html += percentYearChartHtml(repeatByYear, 'Динамика повторяемости причин по годам (% от аварий за год)');
+  html += percentYearChartHtml(repeatByYear, T('dashRepeatTrend'));
   html += repeatRegistryHtml(registry);
 
   var riskForecast = computeRiskForecast(accs);
@@ -1019,12 +1166,12 @@ Promise.all([
     }});
   }}
   initFilters();
-  render();
+  applyLanguage();
 }}).catch(function(err){{
   document.getElementById('results').innerHTML =
-    '<div class="empty"><div>&#9888;</div>Не удалось загрузить accidents.json / defects.json.<br>'+
-    'Если вы открыли файл напрямую (file://) — это ожидаемо: браузеры блокируют fetch() для локальных файлов.<br>'+
-    'Разместите сайт на GitHub Pages (см. README) или запустите локальный сервер: <code>python3 -m http.server</code>'+
+    '<div class="empty"><div>&#9888;</div>' + FS('Не удалось загрузить accidents.json / defects.json.<br>', 'Failed to load accidents.json / defects.json.<br>') +
+    FS('Если вы открыли файл напрямую (file://) — это ожидаемо: браузеры блокируют fetch() для локальных файлов.<br>', 'If you opened the file directly (file://) this is expected — browsers block fetch() for local files.<br>') +
+    FS('Разместите сайт на GitHub Pages (см. README) или запустите локальный сервер: <code>python3 -m http.server</code>', 'Deploy the site on GitHub Pages (see README) or run a local server: <code>python3 -m http.server</code>') +
     '</div>';
   console.error(err);
 }});
@@ -1047,8 +1194,8 @@ def build_web_site(incidents, defects, out_dir):
     fixed_html = WEB_HTML_TEMPLATE.replace('{{', '{').replace('}}', '}')
     build_stamp = datetime.now().strftime('%Y-%m-%d %H:%M')
     fixed_html = fixed_html.replace(
-        '(лежат в корне репозитория)</div>',
-        '(лежат в корне репозитория) &middot; сборка: ' + build_stamp + '</div>'
+        "var BUILD_STAMP = '';",
+        "var BUILD_STAMP = '" + build_stamp + "';"
     )
     with open(out_dir / 'index.html', 'w', encoding='utf-8') as f:
         f.write(fixed_html)
