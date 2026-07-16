@@ -22,6 +22,8 @@
   header p{margin:0;font-size:13px;color:#C9D6E5;}
   .lang-btn{flex:0 0 auto;padding:8px 16px;font-size:13px;font-weight:700;border:1px solid rgba(255,255,255,0.35);border-radius:8px;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;}
   .lang-btn:hover{background:rgba(255,255,255,0.18);}
+  .lang-btn-toolbar{background:var(--surface);color:var(--navy);border:1px solid var(--border);}
+  .lang-btn-toolbar:hover{background:#EDF1F5;}
   .container{max-width:960px;margin:0 auto;padding:20px 20px 60px;}
   .toolbar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin:-18px 0 20px;box-shadow:0 2px 10px rgba(15,36,64,0.08);}
   .search-row{display:flex;gap:10px;margin-bottom:12px;}
@@ -108,7 +110,7 @@
 </header>
 <div class="container">
   <div class="tabs">
-    <button class="tab-btn active" id="tabSearchBtn" type="button">&#128269; Поиск по авариям</button>
+    <button class="tab-btn active" id="tabSearchBtn" type="button">&#128269; Поиск по остановам</button>
     <button class="tab-btn" id="tabDashBtn" type="button">&#128202; Dashboard</button>
   </div>
   <div id="searchView">
@@ -121,6 +123,7 @@
       <select id="fCat" disabled><option value="" id="fCatAll">Все категории</option></select>
       <select id="fYear" disabled><option value="" id="fYearAll">Все годы</option></select>
       <button id="reset" type="button" disabled>Сбросить</button>
+      <button id="langToggle2" type="button" class="lang-btn lang-btn-toolbar">EN</button>
       <label class="file-btn" for="reportFile" id="uploadLabel">&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)</label>
       <input id="reportFile" type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" style="display:none;">
       <span id="fileStatus"></span>
@@ -141,7 +144,7 @@
 <script>
 var incidents = [];
 var LANG = 'ru';
-var BUILD_STAMP = '2026-07-16 09:38';
+var BUILD_STAMP = '2026-07-16 09:50';
 function FS(ru, en) { return LANG==='en' ? en : ru; }
 var CAT_EN = {
   'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
@@ -166,7 +169,7 @@ var I18N = {
   ru: {
     title:'Поиск по базе авто остановов ГПА',
     subtitle:'Умная система анализа авто остановов и помощи инженерам &middot; КС-1 &laquo;Алимтау&raquo;',
-    tabSearch:'&#128269; Поиск по авариям', tabDash:'&#128202; Dashboard',
+    tabSearch:'&#128269; Поиск по остановам', tabDash:'&#128202; Dashboard',
     searchPlaceholder:'Например: свечной кран, потеря пламени, RB6-2, ГПА№2...',
     allGpa:'Все ГПА', allCat:'Все категории', allYear:'Все годы', reset:'Сбросить',
     uploadLabel:'&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)',
@@ -207,7 +210,7 @@ var I18N = {
   en: {
     title:'GPA Emergency Shutdown Database Search',
     subtitle:'Smart shutdown analysis and engineer support system &middot; CS-1 &laquo;Alimtau&raquo;',
-    tabSearch:'&#128269; Search Incidents', tabDash:'&#128202; Dashboard',
+    tabSearch:'&#128269; Search Shutdowns', tabDash:'&#128202; Dashboard',
     searchPlaceholder:'e.g.: ignition valve, flame loss, RB6-2, GPU#2...',
     allGpa:'All units', allCat:'All categories', allYear:'All years', reset:'Reset',
     uploadLabel:'&#128206; Upload incident report (PDF, Word, TXT, photo)',
@@ -809,6 +812,7 @@ function applyLanguage() {
   document.getElementById('sortLabel').textContent = T('sortRelevance');
   document.getElementById('srcNote').innerHTML = T('srcNote') + (BUILD_STAMP ? ' &middot; ' + (LANG==='ru'?'сборка':'build') + ': ' + BUILD_STAMP : '');
   document.getElementById('langToggle').textContent = LANG==='ru' ? 'EN' : 'RU';
+  document.getElementById('langToggle2').textContent = LANG==='ru' ? 'EN' : 'RU';
   document.documentElement.lang = LANG;
   var gpaOpts = document.querySelectorAll('#fGpa option[value]:not([value=""])');
   for (var i=0;i<gpaOpts.length;i++) { gpaOpts[i].textContent = trGpa(gpaOpts[i].value); }
@@ -819,6 +823,10 @@ function applyLanguage() {
   if (document.getElementById('dashboardView').style.display !== 'none') { renderDashboard(); }
 }
 document.getElementById('langToggle').addEventListener('click', function(){
+  LANG = (LANG==='ru') ? 'en' : 'ru';
+  applyLanguage();
+});
+document.getElementById('langToggle2').addEventListener('click', function(){
   LANG = (LANG==='ru') ? 'en' : 'ru';
   applyLanguage();
 });
