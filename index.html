@@ -124,7 +124,7 @@
   </div>
   <div id="recBlock"></div>
   <div id="results"><div class="loading">Загрузка данных...</div></div>
-  <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория) &middot; сборка: 2026-07-14 11:05</div>
+  <div class="src-note">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория) &middot; сборка: 2026-07-15 18:26</div>
   </div>
   <div id="dashboardView" style="display:none;">
     <div id="dashContent"><div class="loading">Загрузка данных...</div></div>
@@ -790,6 +790,97 @@ function repeatRegistryHtml(rows) {
   return html;
 }
 var _dashRendered = false;
+function computeIntervalStats(datesSorted) {
+  var diffs = [];
+  for (var i=1;i<datesSorted.length;i++) { diffs.push((datesSorted[i]-datesSorted[i-1])/86400000); }
+  if (!diffs.length) return null;
+  var sum=0; for (var j=0;j<diffs.length;j++) { sum += diffs[j]; }
+  var avg = sum/diffs.length;
+  var min = diffs[0], max = diffs[0];
+  for (var k=0;k<diffs.length;k++) { if (diffs[k]<min) min=diffs[k]; if (diffs[k]>max) max=diffs[k]; }
+  return {avg:avg, min:min, max:max, n:diffs.length};
+}
+function riskLevel(score) {
+  if (score>=60) return {text:'Высокий', color:'var(--coral)'};
+  if (score>=35) return {text:'Средний', color:'var(--amber)'};
+  return {text:'Низкий', color:'var(--teal)'};
+}
+function computeRiskForecast(accs) {
+  var now = new Date();
+  var allDates = [];
+  for (var i=0;i<accs.length;i++) { allDates.push(parseDMY(accs[i].date)); }
+  allDates.sort(function(a,b){ return a-b; });
+  var globalStats = computeIntervalStats(allDates);
+  var daysSinceGlobalLast = allDates.length ? Math.round((now - allDates[allDates.length-1])/86400000) : null;
+
+  var gpaMap = {}, gpaOrder = [];
+  for (var j=0;j<accs.length;j++) {
+    var gpas = accs[j].gpa || [];
+    for (var g=0; g<gpas.length; g++) {
+      var gp = gpas[g];
+      if (gpaMap[gp]===undefined) { gpaMap[gp] = []; gpaOrder.push(gp); }
+      gpaMap[gp].push(accs[j]);
+    }
+  }
+  var items = [];
+  for (var o=0;o<gpaOrder.length;o++) {
+    var gp2 = gpaOrder[o];
+    var list = gpaMap[gp2].slice().sort(function(a,b){ return parseDMY(a.date)-parseDMY(b.date); });
+    var dates = [];
+    for (var d=0; d<list.length; d++) { dates.push(parseDMY(list[d].date)); }
+    var stats = computeIntervalStats(dates);
+    var lastDate = dates[dates.length-1];
+    var daysSince = Math.round((now - lastDate)/86400000);
+    var avgInterval = stats ? stats.avg : (globalStats ? globalStats.avg : 365);
+    var overdueRatio = avgInterval>0 ? daysSince/avgInterval : 0;
+    var recentCount=0, priorCount=0;
+    for (var d2=0; d2<dates.length; d2++) {
+      var age = (now - dates[d2])/86400000;
+      if (age<=730) { recentCount++; } else if (age<=1460) { priorCount++; }
+    }
+    var trendFactor = recentCount>priorCount ? 1.15 : (recentCount<priorCount ? 0.85 : 1.0);
+    var overdueScore = Math.min(1, overdueRatio) * 50;
+    var freqScore = Math.min(1, (list.length/accs.length) * 3) * 30;
+    var trendScore = (trendFactor-1) * 100;
+    var score = Math.max(5, Math.min(95, Math.round(overdueScore + freqScore + trendScore)));
+    var catCounts = countBy(list, function(inc){ return inc.category; });
+    var topCat = catCounts.length ? catCounts[0] : null;
+    items.push({
+      gpa: gp2, count: list.length, daysSince: daysSince, avgInterval: Math.round(avgInterval),
+      score: score, topCategory: topCat ? topCat.label : null, topCategoryCount: topCat ? topCat.value : 0
+    });
+  }
+  items.sort(function(a,b){ return b.score - a.score; });
+  return {items: items, globalStats: globalStats, daysSinceGlobalLast: daysSinceGlobalLast};
+}
+function riskForecastHtml(fc) {
+  var html = '<h3 style="margin:22px 0 12px;font-size:15.5px;color:var(--navy);border-top:1px solid var(--border);padding-top:20px;">&#128302; Прогноз рисков</h3>';
+  html += '<div class="info-callout"><b>Как читать:</b> это статистическая эвристика (частота + давность последнего случая + тренд за 2 года), а не обученная ML-модель — на 30 наблюдениях полноценное машинное обучение будет либо переобучаться, либо гадать. Используйте как ориентир для приоритизации осмотров, не как замену технической диагностики.</div>';
+  html += '<div class="chart-card"><h4>Риск-скоринг агрегатов</h4>';
+  for (var i=0;i<fc.items.length;i++) {
+    var it = fc.items[i];
+    var lvl = riskLevel(it.score);
+    html += '<div class="bar-row"><div class="bar-label" style="flex-basis:100px;">'+escapeHtml(it.gpa)+'</div>' +
+      '<div class="bar-track"><div class="bar-fill" style="width:'+it.score+'%;background:'+lvl.color+';"></div></div>' +
+      '<div class="bar-val" style="flex-basis:64px;color:'+lvl.color+';">'+lvl.text+'</div></div>';
+  }
+  html += '</div><div class="chart-card"><h4>Детализация по агрегатам</h4>';
+  for (var j=0;j<fc.items.length;j++) {
+    var it2 = fc.items[j];
+    html += '<div class="reg-row"><div class="reg-cat">'+escapeHtml(it2.gpa)+' &middot; вероятная причина: '+(it2.topCategory?escapeHtml(it2.topCategory):'&mdash;')+'</div>' +
+      '<div class="reg-dates">останов '+it2.daysSince+' дн. назад &middot; ср. интервал '+it2.avgInterval+' дн.</div></div>';
+  }
+  html += '</div>';
+  if (fc.globalStats) {
+    var gs = fc.globalStats;
+    var overdue = fc.daysSinceGlobalLast > gs.avg;
+    html += '<div class="chart-card"><h4>Прогноз срока следующего останова (по всей КС)</h4>' +
+      '<p class="rec-line">Средний интервал между авариями за весь период: <b>'+Math.round(gs.avg)+' дн.</b> (мин '+Math.round(gs.min)+', макс '+Math.round(gs.max)+', на основе '+gs.n+' интервалов).</p>' +
+      '<p class="rec-line">С последней аварии прошло <b>'+fc.daysSinceGlobalLast+' дн.</b> — это '+(overdue?'больше':'меньше')+' среднего интервала, вероятность нового останова '+(overdue?'<b>повышена</b>':'в пределах нормы')+'.</p>' +
+      '</div>';
+  }
+  return html;
+}
 function renderDashboard() {
   if (_dashRendered) return;
   var accs = [];
@@ -834,6 +925,9 @@ function renderDashboard() {
     '</div>';
   html += percentYearChartHtml(repeatByYear, 'Динамика повторяемости причин по годам (% от аварий за год)');
   html += repeatRegistryHtml(registry);
+
+  var riskForecast = computeRiskForecast(accs);
+  html += riskForecastHtml(riskForecast);
 
   document.getElementById('dashContent').innerHTML = html;
   _dashRendered = true;
