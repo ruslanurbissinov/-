@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-build.py — единая точка пересборки базы аварийных остановов ГПА.
+build.py — единая точка пересборки базы авто остановов ГПА.
 
 Использование:
     python3 build.py
@@ -53,7 +53,7 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Поиск по базе аварийных остановов ГПА</title>
+<title>Поиск по базе авто остановов ГПА</title>
 <style>
   :root{{
     --navy:#1A365D; --navy-dark:#0F2440; --surface:#F7FAFC; --card:#FFFFFF;
@@ -149,8 +149,8 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
 <header>
   <div class="header-row">
     <div>
-      <h1 id="pageTitle">Поиск по базе аварийных остановов ГПА</h1>
-      <p id="pageSubtitle">Умная система анализа аварийных остановов и помощи инженерам &middot; КС-1 &laquo;Алимтау&raquo;</p>
+      <h1 id="pageTitle">Поиск по базе авто остановов ГПА</h1>
+      <p id="pageSubtitle">Умная система анализа авто остановов и помощи инженерам &middot; КС-1 &laquo;Алимтау&raquo;</p>
     </div>
     <button id="langToggle" type="button" class="lang-btn">EN</button>
   </div>
@@ -213,8 +213,8 @@ function trType(v) {{ return (LANG==='en' && TYPE_EN[v]) ? TYPE_EN[v] : v; }}
 function trGpa(v) {{ return (LANG==='en' && GPA_EN[v]) ? GPA_EN[v] : v; }}
 var I18N = {{
   ru: {{
-    title:'Поиск по базе аварийных остановов ГПА',
-    subtitle:'Умная система анализа аварийных остановов и помощи инженерам &middot; КС-1 &laquo;Алимтау&raquo;',
+    title:'Поиск по базе авто остановов ГПА',
+    subtitle:'Умная система анализа авто остановов и помощи инженерам &middot; КС-1 &laquo;Алимтау&raquo;',
     tabSearch:'&#128269; Поиск по авариям', tabDash:'&#128202; Dashboard',
     searchPlaceholder:'Например: свечной кран, потеря пламени, RB6-2, ГПА№2...',
     allGpa:'Все ГПА', allCat:'Все категории', allYear:'Все годы', reset:'Сбросить',
@@ -231,12 +231,12 @@ var I18N = {{
     recTitle:'&#128161; Рекомендация на основе похожих случаев',
     recMostSimilar:'Наиболее похожий случай:', recAct:'акт', recFrom:'от', recMatch:'совпадение',
     recWhatToDo:'Что делать:', recFormalRec:'Рекомендация по итогам расследования:',
-    dashStatTotal:'Всего аварийных остановов', dashStatPeriod:'Период наблюдения',
+    dashStatTotal:'Всего авто остановов', dashStatPeriod:'Период наблюдения',
     dashStatTopGpa:'Чаще всего останавливался', dashStatTopCat:'Самая частая причина', times:'раз',
-    dashYearChart:'Динамика аварийных остановов по годам', dashByGpa:'Аварии по агрегатам (ГПА)',
+    dashYearChart:'Динамика авто остановов по годам', dashByGpa:'Аварии по агрегатам (ГПА)',
     dashTopCat:'Топ повторяющихся причин / категорий', dashByType:'По типу останова', dashNoData:'Нет данных',
     dashMetricsTitle:'&#128200; Метрики эффективности', dashGoal:'Цель системы:',
-    dashGoalText:'снизить долю повторных аварийных остановов на 40% и сократить время анализа причины с 3&ndash;5 суток (ручной пролистывание архива актов) до 1 рабочего дня за счёт мгновенного поиска похожих случаев по базе.',
+    dashGoalText:'снизить долю повторных авто остановов на 40% и сократить время анализа причины с 3&ndash;5 суток (ручной пролистывание архива актов) до 1 рабочего дня за счёт мгновенного поиска похожих случаев по базе.',
     dashRepeatShare:'Аварий с уже встречавшейся причиной (сейчас, без системы)',
     dashRepeatCats:'Категорий причин, повторявшихся 2+ раза',
     dashRepeatTrend:'Динамика повторяемости причин по годам (% от аварий за год)',
@@ -1282,7 +1282,7 @@ def build_xlsx(incidents, defects):
     ws1 = wb.active
     ws1.title = 'База_данных'
     ws1.merge_cells('A1:F1')
-    header_cell(ws1['A1'], 'БАЗА ДАННЫХ ПО АВАРИЙНЫМ ОСТАНОВАМ ГПА', size=14)
+    header_cell(ws1['A1'], 'БАЗА ДАННЫХ ПО АВТО ОСТАНОВАМ ГПА', size=14)
     ws1.row_dimensions[1].height = 28
     headers = ['Год', 'ГПА', 'Кол-во остановов', 'Дата', '№ Акта', 'Источник (файл)']
     for i, h in enumerate(headers, start=1):
@@ -1562,7 +1562,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Поиск по базе аварийных остановов ГПА</title>
+<title>Поиск по базе авто остановов ГПА</title>
 <style>
   :root{{
     --navy:#1A365D;
@@ -1666,8 +1666,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
 <header>
-  <h1>Поиск по базе аварийных остановов ГПА</h1>
-  <p>Умная система анализа аварийных остановов и помощи инженерам &middot; КС-1 &laquo;Алимтау&raquo;</p>
+  <h1>Поиск по базе авто остановов ГПА</h1>
+  <p>Умная система анализа авто остановов и помощи инженерам &middot; КС-1 &laquo;Алимтау&raquo;</p>
 </header>
 <div class="container">
   <div class="toolbar">
