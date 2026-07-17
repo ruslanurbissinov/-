@@ -88,6 +88,19 @@
   .rec-line:last-child{margin-bottom:0;}
   .rec-line b{color:var(--navy);}
   .rec-note{font-size:12.5px;margin:8px 0 0;padding-top:8px;border-top:1px dashed rgba(15,110,86,0.35);color:var(--amber);font-weight:600;}
+  .ai-block{background:var(--card);border:1px solid var(--navy);border-radius:10px;padding:18px 20px;margin-bottom:14px;}
+  .ai-title{font-size:14.5px;font-weight:700;color:var(--navy);margin:0 0 14px;}
+  .ai-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;}
+  .ai-label{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);margin-bottom:4px;font-weight:600;}
+  .ai-value{font-size:14px;color:var(--text);font-weight:600;line-height:1.4;}
+  .ai-confidence{font-size:24px;font-weight:700;}
+  .ai-basis{font-size:12.5px;color:var(--text-muted);margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+  .ai-section{margin-bottom:14px;}
+  .ai-checklist{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px;}
+  .ai-checklist li{background:var(--teal-bg);color:var(--teal);font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:6px;}
+  .doc-badge{display:inline-block;background:var(--surface);border:1px solid var(--border);color:var(--navy);font-size:12px;font-weight:600;padding:3px 10px;border-radius:6px;margin:0 6px 6px 0;text-decoration:none;}
+  .doc-badge:hover{background:#EDF1F5;}
+  .ai-disclaimer{font-size:11px;color:var(--text-muted);margin-top:2px;padding-top:10px;border-top:1px dashed var(--border);}
   .reg-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px;}
   .reg-row:last-child{border-bottom:none;}
   .reg-cat{flex:1;color:var(--text);}
@@ -144,7 +157,7 @@
 <script>
 var incidents = [];
 var LANG = 'ru';
-var BUILD_STAMP = '2026-07-16 09:50';
+var BUILD_STAMP = '2026-07-17 05:40';
 function FS(ru, en) { return LANG==='en' ? en : ru; }
 var CAT_EN = {
   'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
@@ -185,6 +198,11 @@ var I18N = {
     recTitle:'&#128161; Рекомендация на основе похожих случаев',
     recMostSimilar:'Наиболее похожий случай:', recAct:'акт', recFrom:'от', recMatch:'совпадение',
     recWhatToDo:'Что делать:', recFormalRec:'Рекомендация по итогам расследования:',
+    aiTitle:'&#129302; AI Анализ', aiProbableCause:'Вероятная причина', aiConfidence:'Уверенность',
+    aiBasis:'Основание', aiWhatToCheck:'Что проверить', aiDocs:'Документы', aiPrevention:'Профилактика',
+    aiNoChecklist:'Специфичный чек-лист по этой причине пока не определён — см. документы ниже.',
+    aiDisclaimer:'Анализ основан на сопоставлении с похожими случаями в базе (текстовое + тегово-совпадение), а не на глубоком обучении. Проверяйте выводы по первичным документам.',
+    aiBasisPrefix:'Совпадение с ', aiBasisReports1:' расследованием', aiBasisReportsFew:' расследованиями', aiBasisReportsMany:' расследованиями',
     dashStatTotal:'Всего авто остановов', dashStatPeriod:'Период наблюдения',
     dashStatTopGpa:'Чаще всего останавливался', dashStatTopCat:'Самая частая причина', times:'раз',
     dashYearChart:'Динамика авто остановов по годам', dashByGpa:'Аварии по агрегатам (ГПА)',
@@ -226,6 +244,11 @@ var I18N = {
     recTitle:'&#128161; Recommendation based on similar cases',
     recMostSimilar:'Most similar case:', recAct:'report', recFrom:'dated', recMatch:'match',
     recWhatToDo:'What to do:', recFormalRec:'Investigation recommendation:',
+    aiTitle:'&#129302; AI Analysis', aiProbableCause:'Probable cause', aiConfidence:'Confidence',
+    aiBasis:'Basis', aiWhatToCheck:'What to check', aiDocs:'Documents', aiPrevention:'Prevention',
+    aiNoChecklist:'No specific checklist identified for this cause yet — see documents below.',
+    aiDisclaimer:'This analysis is based on matching against similar cases in the database (text + tag matching), not a trained deep-learning model. Verify conclusions against the source documents.',
+    aiBasisPrefix:'Matches ', aiBasisReports1:' investigation report', aiBasisReportsFew:' investigation reports', aiBasisReportsMany:' investigation reports',
     dashStatTotal:'Total emergency shutdowns', dashStatPeriod:'Observation period',
     dashStatTopGpa:'Most frequently down', dashStatTopCat:'Most common cause', times:'times',
     dashYearChart:'Shutdowns by year', dashByGpa:'Shutdowns by unit (GPU)',
@@ -478,44 +501,64 @@ function tokenCoverage(inc, tokens) {
   if (wordCov!==null) { return wordCov; }
   return 0;
 }
-function buildRecommendation(scored) {
+function buildAIAnalysis(scored) {
   if (!scored.length) return '';
   var top = scored[0].inc;
-  var top3 = scored.slice(0, Math.min(3, scored.length));
-  var catCounts = {}, catOrder = [];
-  for (var i=0;i<top3.length;i++) {
-    var c = top3[i].inc.category;
-    if (catCounts[c]===undefined) { catCounts[c]=0; catOrder.push(c); }
-    catCounts[c] = catCounts[c] + 1;
-  }
-  var repeatCat = null, repeatCount = 0;
-  for (var j=0;j<catOrder.length;j++) {
-    if (catCounts[catOrder[j]] > repeatCount) { repeatCount = catCounts[catOrder[j]]; repeatCat = catOrder[j]; }
-  }
   var pctRounded = Math.round(100*scored[0].pct);
-  var measuresText = '';
-  if (top.remediation && top.remediation.length) {
-    var parts = [];
-    for (var w=0; w<top.remediation.length; w++) { parts.push(top.remediation[w].work_description || ''); }
-    measuresText = parts.join('; ');
+  var sameCategoryMatches = [];
+  for (var i=0;i<scored.length;i++) {
+    if (scored[i].inc.category === top.category) { sameCategoryMatches.push(scored[i].inc); }
+  }
+  var basisCount = sameCategoryMatches.length;
+  var basisWord = basisCount===1 ? T('aiBasisReports1') : (basisCount>=2 && basisCount<=4 ? T('aiBasisReportsFew') : T('aiBasisReportsMany'));
+
+  var tagSet = {}, tagOrder = [];
+  var top3 = scored.slice(0, Math.min(3, scored.length));
+  for (var t=0;t<top3.length;t++) {
+    var tags = top3[t].inc.tags || [];
+    for (var g=0; g<tags.length; g++) { if (tagSet[tags[g]]===undefined) { tagSet[tags[g]] = true; tagOrder.push(tags[g]); } }
+  }
+
+  var docList = sameCategoryMatches.slice(0, 6);
+
+  var preventionText = top.prevention_measures || top.recommendation || '';
+
+  var html = '<div class="ai-block">';
+  html += '<div class="ai-title">'+T('aiTitle')+'</div>';
+  html += '<div class="ai-grid">';
+  html += '<div><div class="ai-label">'+T('aiProbableCause')+'</div><div class="ai-value">'+escapeHtml(trCat(top.category))+'</div></div>';
+  html += '<div><div class="ai-label">'+T('aiConfidence')+'</div><div class="ai-value ai-confidence">'+pctRounded+'%</div></div>';
+  html += '</div>';
+  html += '<div class="ai-basis">'+T('aiBasis')+': '+T('aiBasisPrefix')+basisCount+basisWord+'</div>';
+
+  html += '<div class="ai-section"><div class="ai-label">'+T('aiWhatToCheck')+'</div>';
+  if (tagOrder.length) {
+    html += '<ul class="ai-checklist">';
+    for (var c=0;c<tagOrder.length;c++) { html += '<li>&#10003; '+escapeHtml(tagOrder[c])+'</li>'; }
+    html += '</ul>';
   } else {
-    measuresText = top.measures || '';
+    html += '<div class="ai-value" style="font-weight:400;font-size:13px;color:var(--text-muted);">'+T('aiNoChecklist')+'</div>';
   }
-  var html = '<div class="rec-block">';
-  html += '<div class="rec-title">'+T('recTitle')+'</div>';
-  html += '<p class="rec-line"><b>'+T('recMostSimilar')+'</b> '+T('recAct')+' '+escapeHtml(top.act)+' '+T('recFrom')+' '+escapeHtml(top.date)+' &middot; '+T('recMatch')+' '+pctRounded+'% &middot; '+escapeHtml(trCat(top.category))+'</p>';
-  if (measuresText) {
-    html += '<p class="rec-line"><b>'+T('recWhatToDo')+'</b> '+escapeHtml(measuresText)+'</p>';
+  html += '</div>';
+
+  if (docList.length) {
+    html += '<div class="ai-section"><div class="ai-label">'+T('aiDocs')+'</div>';
+    for (var d=0;d<docList.length;d++) {
+      var di = docList[d];
+      if (di.source) {
+        html += '<a class="doc-badge" href="'+encodeURIComponent(di.source)+'" target="_blank">'+escapeHtml(di.act)+'</a>';
+      } else {
+        html += '<span class="doc-badge">'+escapeHtml(di.act)+'</span>';
+      }
+    }
+    html += '</div>';
   }
-  if (top.recommendation) {
-    html += '<p class="rec-line"><b>'+T('recFormalRec')+'</b> '+escapeHtml(top.recommendation)+'</p>';
+
+  if (preventionText) {
+    html += '<div class="ai-section"><div class="ai-label">'+T('aiPrevention')+'</div><div class="ai-value" style="font-weight:400;">'+escapeHtml(preventionText)+'</div></div>';
   }
-  if (repeatCat && repeatCount >= 2) {
-    html += '<p class="rec-note">&#9888; ' + FS(
-      'Причина &laquo;'+escapeHtml(trCat(repeatCat))+'&raquo; встречается в '+repeatCount+' из '+top3.length+' лучших совпадений — похоже на повторяющуюся системную проблему, стоит проверить не только текущий останов, но и провести системную диагностику.',
-      'Cause &laquo;'+escapeHtml(trCat(repeatCat))+'&raquo; appears in '+repeatCount+' of the top '+top3.length+' matches — this looks like a recurring systemic issue. Consider a broader technical check, not just fixing this one shutdown.'
-    ) + '</p>';
-  }
+
+  html += '<div class="ai-disclaimer">&#8505; '+T('aiDisclaimer')+'</div>';
   html += '</div>';
   return html;
 }
@@ -550,7 +593,7 @@ function render() {
   scored.sort(function(a,b){ if (b.pct!==a.pct) { return b.pct-a.pct; } return b.score-a.score; });
   document.getElementById('count').innerHTML = FS('Найдено: ','Found: ')+'<b>'+scored.length+'</b> '+FS('из','of')+' '+incidents.length+(tokens.length?FS(' (схожесть от 100% до 25%)',' (25–100% match)')+(usedFallback?FS(' · по смыслу, точных тегов не найдено',' · no exact tags, matched by meaning'):''):'');
   var recBox = document.getElementById('recBlock');
-  recBox.innerHTML = (tokens.length && scored.length) ? buildRecommendation(scored) : '';
+  recBox.innerHTML = (tokens.length && scored.length) ? buildAIAnalysis(scored) : '';
   var box = document.getElementById('results');
   box.innerHTML = '';
   if (scored.length===0) {
