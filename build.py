@@ -476,7 +476,8 @@ function buildCard(inc, tokens, scoreBadge) {{
     var pmParts = [];
     for (var w=0;w<inc.remediation.length;w++) {{
       var wk = inc.remediation[w];
-      pmParts.push((wk.work_description||'')+' — '+FS('Акт выполненных работ','Completion report')+' '+(wk.work_act||'?')+' '+FS('от','dated')+' '+(wk.work_date||'?')+' ('+(wk.status||FS('выполнено','completed'))+')');
+      var workActLabel = wk.work_act ? (FS('Акт выполненных работ ','Completion report ')+wk.work_act+' '+FS('от','dated')+' '+(wk.work_date||'?')) : (FS('Акт выполненных работ от ','Completion report dated ')+(wk.work_date||'?'));
+      pmParts.push((wk.work_description||'')+' — '+workActLabel+' ('+(wk.status||FS('выполнено','completed'))+')');
     }}
     principalMeasures = pmParts.join('<br>');
   }} else {{
