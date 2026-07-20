@@ -53,7 +53,7 @@
   .empty{text-align:center;color:var(--text-muted);padding:50px 10px;font-size:14px;}
   .empty div{font-size:28px;margin-bottom:8px;}
   .src-note{font-size:11px;color:#9AA5B1;text-align:center;margin-top:24px;}
-  .doc-src{color:var(--text-muted);font-weight:600;cursor:default;border-bottom:1px dotted var(--border);}
+  a.doc-link{color:var(--navy);font-weight:600;text-decoration:underline;}
   .loading{text-align:center;color:var(--text-muted);padding:60px 10px;}
   .file-btn{font-size:13px;font-weight:600;color:var(--navy);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 14px;cursor:pointer;display:inline-block;}
   .file-btn:hover{background:#EDF1F5;}
@@ -98,7 +98,8 @@
   .ai-section{margin-bottom:14px;}
   .ai-checklist{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px;}
   .ai-checklist li{background:var(--teal-bg);color:var(--teal);font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:6px;}
-  .doc-badge{display:inline-block;background:var(--surface);border:1px solid var(--border);color:var(--navy);font-size:12px;font-weight:600;padding:3px 10px;border-radius:6px;margin:0 6px 6px 0;cursor:default;}
+  .doc-badge{display:inline-block;background:var(--surface);border:1px solid var(--border);color:var(--navy);font-size:12px;font-weight:600;padding:3px 10px;border-radius:6px;margin:0 6px 6px 0;text-decoration:none;}
+  .doc-badge:hover{background:#EDF1F5;}
   .ai-disclaimer{font-size:11px;color:var(--text-muted);margin-top:2px;padding-top:10px;border-top:1px dashed var(--border);}
   .reg-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px;}
   .reg-row:last-child{border-bottom:none;}
@@ -156,7 +157,7 @@
 <script>
 var incidents = [];
 var LANG = 'ru';
-var BUILD_STAMP = '2026-07-20 14:15';
+var BUILD_STAMP = '2026-07-20 17:11';
 function FS(ru, en) { return LANG==='en' ? en : ru; }
 var CAT_EN = {
   'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
@@ -191,8 +192,8 @@ var I18N = {
     showDetails:'Показать меры и заключение &#9662;', hideDetails:'Скрыть детали &#9652;',
     conclusion:'Заключение:', measuresTaken:'Принятые меры:',
     preventionMeasures:'Мероприятия по недопущению аналогичного автоматического останова:',
-    docs:'Документы:', openInvestigationAct:'Акт расследования',
-    openWorkAct:'Акт выполненных работ', openDefectAct:'Дефектный акт',
+    docs:'Документы:', openInvestigationAct:'Открыть акт расследования',
+    openWorkAct:'Открыть акт выполненных работ', openDefectAct:'Открыть дефектный акт',
     nothingFound:'Ничего не найдено с совпадением 25% и выше. Попробуйте другой запрос или сбросьте фильтры.',
     recTitle:'&#128161; Рекомендация на основе похожих случаев',
     recMostSimilar:'Наиболее похожий случай:', recAct:'акт', recFrom:'от', recMatch:'совпадение',
@@ -237,8 +238,8 @@ var I18N = {
     showDetails:'Show measures &amp; conclusion &#9662;', hideDetails:'Hide details &#9652;',
     conclusion:'Conclusion:', measuresTaken:'Measures taken:',
     preventionMeasures:'Measures to prevent a similar automatic shutdown:',
-    docs:'Documents:', openInvestigationAct:'Investigation report',
-    openWorkAct:'Completion report', openDefectAct:'Defect report',
+    docs:'Documents:', openInvestigationAct:'Open investigation report',
+    openWorkAct:'Open completion report', openDefectAct:'Open defect report',
     nothingFound:'Nothing found with a 25%+ match. Try a different query or reset the filters.',
     recTitle:'&#128161; Recommendation based on similar cases',
     recMostSimilar:'Most similar case:', recAct:'report', recFrom:'dated', recMatch:'match',
@@ -439,17 +440,17 @@ function buildCard(inc, tokens, scoreBadge) {
     htmlStr += '<p><b>'+T('preventionMeasures')+'</b> '+highlight(inc.prevention_measures, tokens)+'</p>';
   }
   var docLinks = [];
-  if (inc.source) { docLinks.push('<span class="doc-src" title="'+escapeHtml(inc.source)+'">'+T('openInvestigationAct')+'</span>'); }
+  if (inc.source) { docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">'+T('openInvestigationAct')+'</a>'); }
   if (inc.remediation && inc.remediation.length) {
     for (var w2=0;w2<inc.remediation.length;w2++) {
       var wk2 = inc.remediation[w2];
       if (wk2.work_source) {
-        docLinks.push('<span class="doc-src" title="'+escapeHtml(wk2.work_source)+'">'+T('openWorkAct')+'</span>');
+        docLinks.push('<a class="doc-link" href="'+encodeURIComponent(wk2.work_source)+'" target="_blank">'+T('openWorkAct')+'</a>');
       }
     }
   }
-  if (inc.defect_source) { docLinks.push('<span class="doc-src" title="'+escapeHtml(inc.defect_source)+'">'+T('openDefectAct')+'</span>'); }
-  if (inc.work_source) { docLinks.push('<span class="doc-src" title="'+escapeHtml(inc.work_source)+'">'+T('openWorkAct')+'</span>'); }
+  if (inc.defect_source) { docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.defect_source)+'" target="_blank">'+T('openDefectAct')+'</a>'); }
+  if (inc.work_source) { docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.work_source)+'" target="_blank">'+T('openWorkAct')+'</a>'); }
   if (docLinks.length) { htmlStr += '<p><b>'+T('docs')+'</b> '+docLinks.join(' &middot; ')+'</p>'; }
   htmlStr += '</div>';
   card.innerHTML = htmlStr;
@@ -546,7 +547,7 @@ function buildAIAnalysis(scored) {
     for (var d=0;d<docList.length;d++) {
       var di = docList[d];
       if (di.source) {
-        html += '<span class="doc-badge" title="'+escapeHtml(di.source)+'">'+escapeHtml(di.act)+'</span>';
+        html += '<a class="doc-badge" href="'+encodeURIComponent(di.source)+'" target="_blank">'+escapeHtml(di.act)+'</a>';
       } else {
         html += '<span class="doc-badge">'+escapeHtml(di.act)+'</span>';
       }
