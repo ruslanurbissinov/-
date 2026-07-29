@@ -50,6 +50,16 @@
   .details p{margin:0 0 8px;}
   .details b{color:var(--text);}
   .toggle-btn{font-size:12.5px;color:var(--navy);background:none;border:none;cursor:pointer;padding:0;font-weight:600;text-decoration:underline;}
+  .card-subtabs{display:flex;gap:6px;margin:2px 0 12px;border-bottom:1px solid var(--border);}
+  .subtab-btn{font-size:12.5px;font-weight:600;color:var(--text-muted);background:none;border:none;border-bottom:2px solid transparent;padding:6px 4px 8px;cursor:pointer;margin-bottom:-1px;}
+  .subtab-btn.active{color:var(--navy);border-bottom-color:var(--navy);}
+  .subtab-btn:hover:not(.active){color:var(--text);}
+  .work-entry{margin-bottom:10px;padding-bottom:10px;border-bottom:1px dashed var(--border);}
+  .work-entry:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+  .materials-list{margin:4px 0 8px;padding-left:20px;}
+  .materials-list li{font-size:13.5px;color:var(--text);margin-bottom:4px;}
+  .part-no{font-family:var(--mono);font-size:12px;color:var(--teal);}
+  .work-meta{font-size:12px;color:var(--text-muted);}
   .empty{text-align:center;color:var(--text-muted);padding:50px 10px;font-size:14px;}
   .empty div{font-size:28px;margin-bottom:8px;}
   .src-note{font-size:11px;color:#9AA5B1;text-align:center;margin-top:24px;}
@@ -79,6 +89,12 @@
   .bar-val{flex:0 0 28px;text-align:right;font-weight:600;color:var(--text);}
   .yearbars{display:flex;align-items:flex-end;gap:10px;height:150px;}
   .yearbar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+  .yearbar-col.clickable{cursor:pointer;}
+  .yearbar-col.clickable:hover .yearbar{opacity:0.75;}
+  .yearbar-col.clickable:hover .yearbar-lbl{color:var(--navy);font-weight:700;}
+  .chart-hint{font-size:11px;color:var(--text-muted);margin:-6px 0 12px;}
+  .chart-hint.back-link{color:var(--teal);font-weight:600;cursor:pointer;margin:0 0 12px;}
+  .chart-hint.back-link:hover{text-decoration:underline;}
   .yearbar{width:100%;max-width:38px;background:var(--teal);border-radius:4px 4px 0 0;transition:height .2s;}
   .yearbar-lbl{font-size:11px;color:var(--text-muted);margin-top:5px;}
   .yearbar-val{font-size:11.5px;font-weight:600;color:var(--text);margin-bottom:3px;}
@@ -157,7 +173,7 @@
 <script>
 var incidents = [];
 var LANG = 'ru';
-var BUILD_STAMP = '2026-07-20 17:11';
+var BUILD_STAMP = '2026-07-29 11:14';
 function FS(ru, en) { return LANG==='en' ? en : ru; }
 var CAT_EN = {
   'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
@@ -190,7 +206,11 @@ var I18N = {
     srcNote:'Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория)',
     circumstances:'Обстоятельства, при которых произошел останов:',
     showDetails:'Показать меры и заключение &#9662;', hideDetails:'Скрыть детали &#9652;',
-    conclusion:'Заключение:', measuresTaken:'Принятые меры:',
+    conclusion:'Заключение:', measuresTaken:'Принятые меры (немедленные):',
+    tabInvestigation:'Акт расследования', tabWorkOrder:'Акт выполненных работ',
+    workDescription:'Выполненные работы:', materialsUsed:'Использованные материалы:',
+    partNumber:'парт-номер', workDate:'Дата выполнения:', workStatus:'Статус:',
+    materialsNoData:'Часть данных не указана в первичном акте.',
     preventionMeasures:'Мероприятия по недопущению аналогичного автоматического останова:',
     docs:'Документы:', openInvestigationAct:'Открыть акт расследования',
     openWorkAct:'Открыть акт выполненных работ', openDefectAct:'Открыть дефектный акт',
@@ -206,6 +226,9 @@ var I18N = {
     dashStatTotal:'Всего авто остановов', dashStatPeriod:'Период наблюдения',
     dashStatTopGpa:'Чаще всего останавливался', dashStatTopCat:'Самая частая причина', times:'раз',
     dashYearChart:'Динамика авто остановов по годам', dashByGpa:'Аварии по агрегатам (ГПА)',
+    dashMonthChart:'Динамика авто остановов по месяцам &mdash; ', backToYears:'&larr; Назад к годам',
+    clickYearHint:'Нажмите на год, чтобы посмотреть по месяцам',
+    monthNames:['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'],
     dashTopCat:'Топ повторяющихся причин / категорий', dashByType:'По типу останова', dashNoData:'Нет данных',
     dashMetricsTitle:'&#128200; Метрики эффективности', dashGoal:'Цель системы:',
     dashGoalText:'снизить долю повторных авто остановов на 40% и сократить время анализа причины с 3&ndash;5 суток (ручной пролистывание архива актов) до 1 рабочего дня за счёт мгновенного поиска похожих случаев по базе.',
@@ -236,7 +259,11 @@ var I18N = {
     srcNote:'Data loaded from accidents.json + defects.json &middot; reports are stored in the repository root',
     circumstances:'Circumstances of the shutdown:',
     showDetails:'Show measures &amp; conclusion &#9662;', hideDetails:'Hide details &#9652;',
-    conclusion:'Conclusion:', measuresTaken:'Measures taken:',
+    conclusion:'Conclusion:', measuresTaken:'Immediate measures taken:',
+    tabInvestigation:'Investigation report', tabWorkOrder:'Completion report',
+    workDescription:'Work performed:', materialsUsed:'Materials used:',
+    partNumber:'part no.', workDate:'Completion date:', workStatus:'Status:',
+    materialsNoData:'Some details are not specified in the source report.',
     preventionMeasures:'Measures to prevent a similar automatic shutdown:',
     docs:'Documents:', openInvestigationAct:'Open investigation report',
     openWorkAct:'Open completion report', openDefectAct:'Open defect report',
@@ -252,6 +279,9 @@ var I18N = {
     dashStatTotal:'Total emergency shutdowns', dashStatPeriod:'Observation period',
     dashStatTopGpa:'Most frequently down', dashStatTopCat:'Most common cause', times:'times',
     dashYearChart:'Shutdowns by year', dashByGpa:'Shutdowns by unit (GPU)',
+    dashMonthChart:'Shutdowns by month &mdash; ', backToYears:'&larr; Back to years',
+    clickYearHint:'Click a year to see the monthly breakdown',
+    monthNames:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
     dashTopCat:'Top recurring causes / categories', dashByType:'By shutdown type', dashNoData:'No data',
     dashMetricsTitle:'&#128200; Efficiency metrics', dashGoal:'System goal:',
     dashGoalText:'reduce the share of repeat emergency shutdowns by 40% and cut root-cause analysis time from 3&ndash;5 days (manually paging through the report archive) to 1 working day via instant search across similar past cases.',
@@ -422,36 +452,54 @@ function buildCard(inc, tokens, scoreBadge) {
   }
   htmlStr += '<button class="toggle-btn" type="button">'+T('showDetails')+'</button>';
   htmlStr += '<div class="details">';
-  if (inc.conclusion) { htmlStr += '<p><b>'+T('conclusion')+'</b> '+highlight(inc.conclusion, tokens)+'</p>'; }
-  var principalMeasures = '';
-  if (inc.remediation && inc.remediation.length) {
-    var pmParts = [];
-    for (var w=0;w<inc.remediation.length;w++) {
-      var wk = inc.remediation[w];
-      var workActLabel = wk.work_act ? (FS('Акт выполненных работ ','Completion report ')+wk.work_act+' '+FS('от','dated')+' '+(wk.work_date||'?')) : (FS('Акт выполненных работ от ','Completion report dated ')+(wk.work_date||'?'));
-      pmParts.push((wk.work_description||'')+' — '+workActLabel+' ('+(wk.status||FS('выполнено','completed'))+')');
-    }
-    principalMeasures = pmParts.join('<br>');
-  } else {
-    principalMeasures = inc.measures || '—';
+
+  var hasWork = inc.remediation && inc.remediation.length > 0;
+
+  if (hasWork) {
+    htmlStr += '<div class="card-subtabs">';
+    htmlStr += '<button class="subtab-btn active" type="button" data-tab="inv">'+T('tabInvestigation')+'</button>';
+    htmlStr += '<button class="subtab-btn" type="button" data-tab="work">'+T('tabWorkOrder')+'</button>';
+    htmlStr += '</div>';
   }
-  htmlStr += '<p><b>'+T('measuresTaken')+'</b> '+highlight(principalMeasures, tokens)+'</p>';
+
+  // --- Investigation pane ---
+  htmlStr += '<div class="subtab-pane" data-pane="inv">';
+  if (inc.conclusion) { htmlStr += '<p><b>'+T('conclusion')+'</b> '+highlight(inc.conclusion, tokens)+'</p>'; }
+  htmlStr += '<p><b>'+T('measuresTaken')+'</b> '+highlight(inc.measures || '—', tokens)+'</p>';
   if (inc.prevention_measures) {
     htmlStr += '<p><b>'+T('preventionMeasures')+'</b> '+highlight(inc.prevention_measures, tokens)+'</p>';
   }
-  var docLinks = [];
-  if (inc.source) { docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">'+T('openInvestigationAct')+'</a>'); }
-  if (inc.remediation && inc.remediation.length) {
-    for (var w2=0;w2<inc.remediation.length;w2++) {
-      var wk2 = inc.remediation[w2];
-      if (wk2.work_source) {
-        docLinks.push('<a class="doc-link" href="'+encodeURIComponent(wk2.work_source)+'" target="_blank">'+T('openWorkAct')+'</a>');
+  var invDocs = [];
+  if (inc.source) { invDocs.push('<a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">'+T('openInvestigationAct')+'</a>'); }
+  if (inc.defect_source) { invDocs.push('<a class="doc-link" href="'+encodeURIComponent(inc.defect_source)+'" target="_blank">'+T('openDefectAct')+'</a>'); }
+  if (invDocs.length) { htmlStr += '<p><b>'+T('docs')+'</b> '+invDocs.join(' &middot; ')+'</p>'; }
+  htmlStr += '</div>';
+
+  // --- Work order pane ---
+  if (hasWork) {
+    htmlStr += '<div class="subtab-pane" data-pane="work" style="display:none;">';
+    for (var w=0; w<inc.remediation.length; w++) {
+      var wk = inc.remediation[w];
+      htmlStr += '<div class="work-entry">';
+      htmlStr += '<p><b>'+T('workDescription')+'</b> '+highlight(wk.work_description||'—', tokens)+'</p>';
+      if (wk.materials && wk.materials.length) {
+        htmlStr += '<p><b>'+T('materialsUsed')+'</b></p><ul class="materials-list">';
+        for (var m=0; m<wk.materials.length; m++) {
+          var mat = wk.materials[m];
+          var qtyUnit = (mat.qty!==undefined && mat.unit) ? (' &middot; '+mat.qty+' '+escapeHtml(mat.unit)) : '';
+          htmlStr += '<li>'+escapeHtml(mat.name)+' <span class="part-no">('+T('partNumber')+': '+escapeHtml(mat.part_no||'—')+')</span>'+qtyUnit+'</li>';
+        }
+        htmlStr += '</ul>';
       }
+      htmlStr += '<p class="work-meta">'+T('workDate')+' '+escapeHtml(wk.work_date||'?')+' &middot; '+T('workStatus')+' '+escapeHtml(wk.status||FS('выполнено','completed'))+'</p>';
+      if (wk.work_source) {
+        htmlStr += '<p><b>'+T('docs')+'</b> <a class="doc-link" href="'+encodeURIComponent(wk.work_source)+'" target="_blank">'+T('openWorkAct')+'</a></p>';
+      }
+      htmlStr += '</div>';
     }
+    htmlStr += '</div>';
   }
-  if (inc.defect_source) { docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.defect_source)+'" target="_blank">'+T('openDefectAct')+'</a>'); }
-  if (inc.work_source) { docLinks.push('<a class="doc-link" href="'+encodeURIComponent(inc.work_source)+'" target="_blank">'+T('openWorkAct')+'</a>'); }
-  if (docLinks.length) { htmlStr += '<p><b>'+T('docs')+'</b> '+docLinks.join(' &middot; ')+'</p>'; }
+
   htmlStr += '</div>';
   card.innerHTML = htmlStr;
   (function(cardEl){
@@ -462,6 +510,16 @@ function buildCard(inc, tokens, scoreBadge) {
       if (isOpen) { det.className='details'; btn.innerHTML=T('showDetails'); }
       else { det.className='details open'; btn.innerHTML=T('hideDetails'); }
     });
+    var subtabBtns = cardEl.querySelectorAll('.subtab-btn');
+    for (var st=0; st<subtabBtns.length; st++) {
+      subtabBtns[st].addEventListener('click', function(e){
+        var target = e.target.getAttribute('data-tab');
+        var allBtns = cardEl.querySelectorAll('.subtab-btn');
+        var allPanes = cardEl.querySelectorAll('.subtab-pane');
+        for (var i=0;i<allBtns.length;i++) { allBtns[i].className = 'subtab-btn' + (allBtns[i].getAttribute('data-tab')===target ? ' active' : ''); }
+        for (var j=0;j<allPanes.length;j++) { allPanes[j].style.display = (allPanes[j].getAttribute('data-pane')===target ? '' : 'none'); }
+      });
+    }
   })(card);
   return card;
 }
@@ -912,15 +970,59 @@ function yearChartHtml(data) {
   var sorted = data.slice().sort(function(a,b){ return a.label < b.label ? -1 : (a.label > b.label ? 1 : 0); });
   var maxVal = 0;
   for (var i=0;i<sorted.length;i++) { if (sorted[i].value>maxVal) maxVal = sorted[i].value; }
-  var html = '<div class="chart-card"><h4>'+T('dashYearChart')+'</h4><div class="yearbars">';
+  var html = '<div class="chart-card" id="yearChartContainer"><h4>'+T('dashYearChart')+'</h4>';
+  html += '<div class="chart-hint">'+T('clickYearHint')+'</div>';
+  html += '<div class="yearbars">';
   for (var i=0;i<sorted.length;i++) {
     var h = maxVal>0 ? Math.max(6, Math.round(100*sorted[i].value/maxVal)) : 6;
-    html += '<div class="yearbar-col"><div class="yearbar-val">'+sorted[i].value+'</div>' +
+    html += '<div class="yearbar-col clickable" onclick="showYearMonths(&#39;'+escapeHtml(sorted[i].label)+'&#39;)" title="'+T('clickYearHint')+'"><div class="yearbar-val">'+sorted[i].value+'</div>' +
       '<div class="yearbar" style="height:'+h+'%;"></div>' +
       '<div class="yearbar-lbl">'+escapeHtml(sorted[i].label)+'</div></div>';
   }
   html += '</div></div>';
   return html;
+}
+function computeMonthlyForYear(accs, year) {
+  var counts = [0,0,0,0,0,0,0,0,0,0,0,0];
+  for (var i=0;i<accs.length;i++) {
+    var d = accs[i].date || '';
+    if (d.slice(-4) !== year) continue;
+    var parts = d.split('.');
+    if (parts.length < 2) continue;
+    var m = parseInt(parts[1], 10);
+    if (m>=1 && m<=12) counts[m-1] += 1;
+  }
+  var names = T('monthNames');
+  var out = [];
+  for (var j=0;j<12;j++) { out.push({label: names[j], value: counts[j]}); }
+  return out;
+}
+function monthChartHtml(monthData, year) {
+  var maxVal = 0;
+  for (var i=0;i<monthData.length;i++) { if (monthData[i].value>maxVal) maxVal = monthData[i].value; }
+  var html = '<h4>'+T('dashMonthChart')+escapeHtml(year)+'</h4>';
+  html += '<div class="chart-hint back-link" onclick="showAllYears()">'+T('backToYears')+'</div>';
+  html += '<div class="yearbars">';
+  for (var i=0;i<monthData.length;i++) {
+    var h = maxVal>0 ? Math.max(6, Math.round(100*monthData[i].value/maxVal)) : 4;
+    html += '<div class="yearbar-col"><div class="yearbar-val">'+monthData[i].value+'</div>' +
+      '<div class="yearbar" style="height:'+h+'%;background:var(--teal);"></div>' +
+      '<div class="yearbar-lbl">'+escapeHtml(monthData[i].label)+'</div></div>';
+  }
+  html += '</div>';
+  return html;
+}
+function showYearMonths(year) {
+  var container = document.getElementById('yearChartContainer');
+  if (!container) return;
+  var monthData = computeMonthlyForYear(_dashAccs, year);
+  container.innerHTML = monthChartHtml(monthData, year);
+}
+function showAllYears() {
+  var container = document.getElementById('yearChartContainer');
+  if (!container) return;
+  var byYear = countBy(_dashAccs, function(inc){ return inc.date.slice(-4); });
+  container.outerHTML = yearChartHtml(byYear);
 }
 function parseDMY(dateStr) {
   var parts = (dateStr||'').split('.');
@@ -989,6 +1091,7 @@ function repeatRegistryHtml(rows) {
   return html;
 }
 var _dashRendered = false;
+var _dashAccs = [];
 function computeIntervalStats(datesSorted) {
   var diffs = [];
   for (var i=1;i<datesSorted.length;i++) { diffs.push((datesSorted[i]-datesSorted[i-1])/86400000); }
@@ -1088,6 +1191,7 @@ function renderDashboard() {
     document.getElementById('dashContent').innerHTML = '<div class="empty"><div>&#9888;</div>'+T('dashEmpty')+'</div>';
     return;
   }
+  _dashAccs = accs;
   var byGpa = countBy(accs, function(inc){ return inc.gpa; });
   var byYear = countBy(accs, function(inc){ return inc.date.slice(-4); });
   var byCategory = countBy(accs, function(inc){ return inc.category; });
