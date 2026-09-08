@@ -92,6 +92,13 @@
   .yearbar-col.clickable{cursor:pointer;}
   .yearbar-col.clickable:hover .yearbar{opacity:0.75;}
   .yearbar-col.clickable:hover .yearbar-lbl{color:var(--navy);font-weight:700;}
+  .bar-row.clickable{cursor:pointer;border-radius:6px;padding:3px 6px;margin:0 -6px 8px;transition:background 0.12s;}
+  .bar-row.clickable:hover{background:var(--surface);}
+  .bar-row.clickable:hover .bar-label{color:var(--navy);font-weight:700;}
+  .stat-card.clickable{cursor:pointer;transition:box-shadow 0.12s,border-color 0.12s;}
+  .stat-card.clickable:hover{box-shadow:0 2px 10px rgba(15,36,64,0.12);border-color:var(--navy);}
+  .stat-hint{font-size:10.5px;color:#9AA5B1;margin-top:2px;}
+  .year-range-hint{color:var(--text-muted);font-weight:500;}
   .chart-hint{font-size:11px;color:var(--text-muted);margin:-6px 0 12px;}
   .chart-hint.back-link{color:var(--teal);font-weight:600;cursor:pointer;margin:0 0 12px;}
   .chart-hint.back-link:hover{text-decoration:underline;}
@@ -173,7 +180,7 @@
 <script>
 var incidents = [];
 var LANG = 'ru';
-var BUILD_STAMP = '2026-09-08 07:24';
+var BUILD_STAMP = '2026-09-08 09:16';
 function FS(ru, en) { return LANG==='en' ? en : ru; }
 var CAT_EN = {
   'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
@@ -227,6 +234,7 @@ var I18N = {
     aiBasisPrefix:'Совпадение с ', aiBasisReports1:' расследованием', aiBasisReportsFew:' расследованиями', aiBasisReportsMany:' расследованиями',
     dashStatTotal:'Всего авто остановов', dashStatPeriod:'Период наблюдения',
     dashStatTopGpa:'Чаще всего останавливался', dashStatTopCat:'Самая частая причина', times:'раз',
+    statHintAll:'Показать все случаи в поиске &rarr;', statHintFilter:'Показать случаи в поиске &rarr;',
     dashYearChart:'Динамика авто остановов по годам', dashByGpa:'Аварии по агрегатам (ГПА)',
     dashMonthChart:'Динамика авто остановов по месяцам &mdash; ', backToYears:'&larr; Назад к годам',
     clickYearHint:'Нажмите на год, чтобы посмотреть по месяцам',
@@ -282,6 +290,7 @@ var I18N = {
     aiBasisPrefix:'Matches ', aiBasisReports1:' investigation report', aiBasisReportsFew:' investigation reports', aiBasisReportsMany:' investigation reports',
     dashStatTotal:'Total emergency shutdowns', dashStatPeriod:'Observation period',
     dashStatTopGpa:'Most frequently down', dashStatTopCat:'Most common cause', times:'times',
+    statHintAll:'Show all cases in search &rarr;', statHintFilter:'Show cases in search &rarr;',
     dashYearChart:'Shutdowns by year', dashByGpa:'Shutdowns by unit (GPU)',
     dashMonthChart:'Shutdowns by month &mdash; ', backToYears:'&larr; Back to years',
     clickYearHint:'Click a year to see the monthly breakdown',
@@ -662,7 +671,16 @@ function render() {
     usedFallback = true;
   }
   scored.sort(function(a,b){ if (b.pct!==a.pct) { return b.pct-a.pct; } return b.score-a.score; });
-  document.getElementById('count').innerHTML = FS('Найдено: ','Found: ')+'<b>'+scored.length+'</b> '+FS('из','of')+' '+incidents.length+(tokens.length?FS(' (схожесть от 100% до 25%)',' (25–100% match)')+(usedFallback?FS(' · по смыслу, точных тегов не найдено',' · no exact tags, matched by meaning'):''):'');
+  var countHtml = FS('Найдено: ','Found: ')+'<b>'+scored.length+'</b> '+FS('из','of')+' '+incidents.length+(tokens.length?FS(' (схожесть от 100% до 25%)',' (25–100% match)')+(usedFallback?FS(' · по смыслу, точных тегов не найдено',' · no exact tags, matched by meaning'):''):'');
+  if ((fGpa || fCat) && scored.length) {
+    var yrs = [];
+    for (var yi=0; yi<scored.length; yi++) { yrs.push(scored[yi].inc.date.slice(-4)); }
+    var yMin = yrs.reduce(function(a,b){ return a<b?a:b; });
+    var yMax = yrs.reduce(function(a,b){ return a>b?a:b; });
+    var yRangeStr = (yMin===yMax) ? yMin : (yMin+'–'+yMax);
+    countHtml += ' <span class="year-range-hint">&middot; '+FS('за ','in ')+yRangeStr+FS(' гг.','')+'</span>';
+  }
+  document.getElementById('count').innerHTML = countHtml;
   var recBox = document.getElementById('recBlock');
   recBox.innerHTML = (tokens.length && scored.length) ? buildAIAnalysis(scored) : '';
   var box = document.getElementById('results');
@@ -962,19 +980,21 @@ function countBy(list, getterFn) {
   arr.sort(function(a,b){ return b.value - a.value; });
   return arr;
 }
-function barRowHtml(item, maxVal, color, translateFn) {
+function barRowHtml(item, maxVal, color, translateFn, filterKey) {
   var pct = maxVal>0 ? Math.max(2, Math.round(100*item.value/maxVal)) : 2;
   var label = translateFn ? translateFn(item.label) : item.label;
-  return '<div class="bar-row"><div class="bar-label" title="'+escapeHtml(label)+'">'+escapeHtml(label)+'</div>' +
+  var clickAttrs = filterKey ? ' data-filter-key="'+filterKey+'" data-filter-value="'+escapeHtml(item.label)+'"' : '';
+  var cls = 'bar-row' + (filterKey ? ' clickable' : '');
+  return '<div class="'+cls+'"'+clickAttrs+'><div class="bar-label" title="'+escapeHtml(label)+'">'+escapeHtml(label)+'</div>' +
     '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+color+';"></div></div>' +
     '<div class="bar-val">'+item.value+'</div></div>';
 }
-function chartCardHtml(title, data, color, limit, translateFn) {
+function chartCardHtml(title, data, color, limit, translateFn, filterKey) {
   var top = limit ? data.slice(0, limit) : data;
   var maxVal = top.length ? top[0].value : 0;
   var html = '<div class="chart-card"><h4>'+escapeHtml(title)+'</h4>';
   if (!top.length) { html += '<div style="color:var(--text-muted);font-size:13px;">'+T('dashNoData')+'</div>'; }
-  for (var i=0;i<top.length;i++) { html += barRowHtml(top[i], maxVal, color, translateFn); }
+  for (var i=0;i<top.length;i++) { html += barRowHtml(top[i], maxVal, color, translateFn, filterKey); }
   html += '</div>';
   return html;
 }
@@ -1216,14 +1236,16 @@ function renderDashboard() {
   var maxY = years.length ? years.reduce(function(a,b){ return a>b?a:b; }) : '—';
 
   var html = '<div class="dash-grid">' +
-    '<div class="stat-card"><div class="num">'+accs.length+'</div><div class="lbl">'+T('dashStatTotal')+'</div></div>' +
-    '<div class="stat-card"><div class="num">'+minY+'&ndash;'+maxY+'</div><div class="lbl">'+T('dashStatPeriod')+'</div></div>' +
-    '<div class="stat-card"><div class="num">'+(topGpa?escapeHtml(trGpa(topGpa.label)):'—')+'</div><div class="lbl">'+T('dashStatTopGpa')+' &middot; '+(topGpa?topGpa.value:0)+' '+T('times')+'</div></div>' +
-    '<div class="stat-card"><div class="num" style="font-size:14.5px;">'+(topCat?escapeHtml(trCat(topCat.label)):'—')+'</div><div class="lbl">'+T('dashStatTopCat')+' &middot; '+(topCat?topCat.value:0)+' '+T('times')+'</div></div>' +
+    '<div class="stat-card clickable" data-reset-filters="1"><div class="num">'+accs.length+'</div><div class="lbl">'+T('dashStatTotal')+'</div><div class="stat-hint">'+T('statHintAll')+'</div></div>' +
+    '<div class="stat-card clickable" data-reset-filters="1"><div class="num">'+minY+'&ndash;'+maxY+'</div><div class="lbl">'+T('dashStatPeriod')+'</div><div class="stat-hint">'+T('statHintAll')+'</div></div>' +
+    (topGpa ? '<div class="stat-card clickable" data-filter-key="fGpa" data-filter-value="'+escapeHtml(topGpa.label)+'"><div class="num">'+escapeHtml(trGpa(topGpa.label))+'</div><div class="lbl">'+T('dashStatTopGpa')+' &middot; '+topGpa.value+' '+T('times')+'</div><div class="stat-hint">'+T('statHintFilter')+'</div></div>'
+      : '<div class="stat-card"><div class="num">—</div><div class="lbl">'+T('dashStatTopGpa')+'</div></div>') +
+    (topCat ? '<div class="stat-card clickable" data-filter-key="fCat" data-filter-value="'+escapeHtml(topCat.label)+'"><div class="num" style="font-size:14.5px;">'+escapeHtml(trCat(topCat.label))+'</div><div class="lbl">'+T('dashStatTopCat')+' &middot; '+topCat.value+' '+T('times')+'</div><div class="stat-hint">'+T('statHintFilter')+'</div></div>'
+      : '<div class="stat-card"><div class="num" style="font-size:14.5px;">—</div><div class="lbl">'+T('dashStatTopCat')+'</div></div>') +
     '</div>';
   html += yearChartHtml(byYear);
-  html += chartCardHtml(T('dashByGpa'), byGpa, 'var(--teal)', null, trGpa);
-  html += chartCardHtml(T('dashTopCat'), byCategory, 'var(--navy)', 8, trCat);
+  html += chartCardHtml(T('dashByGpa'), byGpa, 'var(--teal)', null, trGpa, 'fGpa');
+  html += chartCardHtml(T('dashTopCat'), byCategory, 'var(--navy)', 8, trCat, 'fCat');
   html += chartCardHtml(T('dashByType'), byType, 'var(--coral)', null, trType);
 
   var repeatByYear = computeRepeatRateByYear(accs);
@@ -1245,7 +1267,31 @@ function renderDashboard() {
   html += riskForecastHtml(riskForecast);
 
   document.getElementById('dashContent').innerHTML = html;
+  wireDashClicks(document.getElementById('dashContent'));
   _dashRendered = true;
+}
+function goToFilteredSearch(filterKey, filterValue) {
+  document.getElementById('q').value = '';
+  document.getElementById('fGpa').value = '';
+  document.getElementById('fCat').value = '';
+  document.getElementById('fYear').value = '';
+  if (filterKey) { document.getElementById(filterKey).value = filterValue; }
+  switchTab('search');
+  render();
+  document.getElementById('results').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function wireDashClicks(root) {
+  var clickable = root.querySelectorAll('.bar-row.clickable, .stat-card.clickable');
+  for (var i=0;i<clickable.length;i++) {
+    (function(el){
+      el.addEventListener('click', function(){
+        var key = el.getAttribute('data-filter-key');
+        var val = el.getAttribute('data-filter-value');
+        if (el.getAttribute('data-reset-filters')) { goToFilteredSearch(null, null); }
+        else if (key && val) { goToFilteredSearch(key, val); }
+      });
+    })(clickable[i]);
+  }
 }
 
 Promise.all([
