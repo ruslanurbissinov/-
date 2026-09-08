@@ -173,7 +173,7 @@
 <script>
 var incidents = [];
 var LANG = 'ru';
-var BUILD_STAMP = '2026-07-29 11:14';
+var BUILD_STAMP = '2026-09-08 07:24';
 function FS(ru, en) { return LANG==='en' ? en : ru; }
 var CAT_EN = {
   'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
@@ -218,6 +218,8 @@ var I18N = {
     recTitle:'&#128161; Рекомендация на основе похожих случаев',
     recMostSimilar:'Наиболее похожий случай:', recAct:'акт', recFrom:'от', recMatch:'совпадение',
     recWhatToDo:'Что делать:', recFormalRec:'Рекомендация по итогам расследования:',
+    damagedEquip:'Повреждённое оборудование:', noWorkOrder:'Отдельный акт выполненных работ по этому случаю не оформлялся — устранение выполнено в рамках немедленных мер (см. вкладку «Акт расследования»).',
+    exactTime:'Время:',
     aiTitle:'&#129302; AI Анализ', aiProbableCause:'Вероятная причина', aiConfidence:'Уверенность',
     aiBasis:'Основание', aiWhatToCheck:'Что проверить', aiDocs:'Документы', aiPrevention:'Профилактика',
     aiNoChecklist:'Специфичный чек-лист по этой причине пока не определён — см. документы ниже.',
@@ -271,6 +273,8 @@ var I18N = {
     recTitle:'&#128161; Recommendation based on similar cases',
     recMostSimilar:'Most similar case:', recAct:'report', recFrom:'dated', recMatch:'match',
     recWhatToDo:'What to do:', recFormalRec:'Investigation recommendation:',
+    damagedEquip:'Damaged equipment:', noWorkOrder:'No separate completion report was filed for this case — the fix was carried out as part of the immediate measures (see the "Investigation report" tab).',
+    exactTime:'Time:',
     aiTitle:'&#129302; AI Analysis', aiProbableCause:'Probable cause', aiConfidence:'Confidence',
     aiBasis:'Basis', aiWhatToCheck:'What to check', aiDocs:'Documents', aiPrevention:'Prevention',
     aiNoChecklist:'No specific checklist identified for this cause yet — see documents below.',
@@ -437,7 +441,8 @@ function buildCard(inc, tokens, scoreBadge) {
   for (var g=0;g<inc.gpa.length;g++) { gpaTags += '<span class="tag gpa">'+escapeHtml(trGpa(inc.gpa[g]))+'</span>'; }
   var htmlStr = '';
   htmlStr += '<div class="card-top">';
-  htmlStr += '<span class="tag act">'+escapeHtml(inc.act)+' &middot; '+escapeHtml(inc.date)+'</span>';
+  var dateTag = escapeHtml(inc.act)+' &middot; '+escapeHtml(inc.date)+(inc.time ? ' '+escapeHtml(inc.time) : '');
+  htmlStr += '<span class="tag act">'+dateTag+'</span>';
   htmlStr += gpaTags;
   htmlStr += '<span class="tag cat">'+escapeHtml(trCat(inc.category))+'</span>';
   htmlStr += '<span class="tag type">'+escapeHtml(trType(inc.type))+'</span>';
@@ -455,12 +460,10 @@ function buildCard(inc, tokens, scoreBadge) {
 
   var hasWork = inc.remediation && inc.remediation.length > 0;
 
-  if (hasWork) {
-    htmlStr += '<div class="card-subtabs">';
-    htmlStr += '<button class="subtab-btn active" type="button" data-tab="inv">'+T('tabInvestigation')+'</button>';
-    htmlStr += '<button class="subtab-btn" type="button" data-tab="work">'+T('tabWorkOrder')+'</button>';
-    htmlStr += '</div>';
-  }
+  htmlStr += '<div class="card-subtabs">';
+  htmlStr += '<button class="subtab-btn active" type="button" data-tab="inv">'+T('tabInvestigation')+'</button>';
+  htmlStr += '<button class="subtab-btn" type="button" data-tab="work">'+T('tabWorkOrder')+'</button>';
+  htmlStr += '</div>';
 
   // --- Investigation pane ---
   htmlStr += '<div class="subtab-pane" data-pane="inv">';
@@ -469,6 +472,12 @@ function buildCard(inc, tokens, scoreBadge) {
   if (inc.prevention_measures) {
     htmlStr += '<p><b>'+T('preventionMeasures')+'</b> '+highlight(inc.prevention_measures, tokens)+'</p>';
   }
+  if (inc.recommendation) {
+    htmlStr += '<p><b>'+T('recFormalRec')+'</b> '+highlight(inc.recommendation, tokens)+'</p>';
+  }
+  if (inc.damaged && inc.damaged !== 'Отсутствуют' && inc.damaged !== 'Отсутствует' && inc.damaged !== 'Не обнаружено') {
+    htmlStr += '<p><b>'+T('damagedEquip')+'</b> '+highlight(inc.damaged, tokens)+'</p>';
+  }
   var invDocs = [];
   if (inc.source) { invDocs.push('<a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">'+T('openInvestigationAct')+'</a>'); }
   if (inc.defect_source) { invDocs.push('<a class="doc-link" href="'+encodeURIComponent(inc.defect_source)+'" target="_blank">'+T('openDefectAct')+'</a>'); }
@@ -476,8 +485,11 @@ function buildCard(inc, tokens, scoreBadge) {
   htmlStr += '</div>';
 
   // --- Work order pane ---
+  htmlStr += '<div class="subtab-pane" data-pane="work" style="display:none;">';
+  if (!hasWork) {
+    htmlStr += '<p style="color:var(--text-muted);">'+T('noWorkOrder')+'</p>';
+  }
   if (hasWork) {
-    htmlStr += '<div class="subtab-pane" data-pane="work" style="display:none;">';
     for (var w=0; w<inc.remediation.length; w++) {
       var wk = inc.remediation[w];
       htmlStr += '<div class="work-entry">';

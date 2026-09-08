@@ -19,7 +19,8 @@
     "tags": [
       "ABB",
       "PDIT 563"
-    ]
+    ],
+    "year": 2020
   },
   {
     "act": "№1",
@@ -44,7 +45,8 @@
       "FCV-104/105/107",
       "FCV-107",
       "FCV-211"
-    ]
+    ],
+    "year": 2022
   },
   {
     "act": "№2",
@@ -69,7 +71,8 @@
       "DLE",
       "FCV-104/105/107",
       "FCV-211"
-    ]
+    ],
+    "year": 2022
   },
   {
     "act": "№3",
@@ -90,7 +93,8 @@
     "remediation": [],
     "tags": [
       "ESDII"
-    ]
+    ],
+    "year": 2022
   },
   {
     "act": "№5",
@@ -111,7 +115,8 @@
     "remediation": [],
     "tags": [
       "XV-784"
-    ]
+    ],
+    "year": 2022
   },
   {
     "act": "№1",
@@ -131,7 +136,8 @@
     "damaged": "Отсутствуют",
     "source": "act06_investigation.pdf",
     "remediation": [],
-    "tags": []
+    "tags": [],
+    "year": 2023
   },
   {
     "act": "№2",
@@ -162,7 +168,8 @@
       "MTL",
       "RB6-2",
       "RIO"
-    ]
+    ],
+    "year": 2023
   },
   {
     "act": "№5",
@@ -184,7 +191,8 @@
     "remediation": [],
     "tags": [
       "XV-4204"
-    ]
+    ],
+    "year": 2023
   },
   {
     "act": "№1",
@@ -208,7 +216,8 @@
       "RIO",
       "RTD 8106-TI-RT",
       "UCP1"
-    ]
+    ],
+    "year": 2024
   },
   {
     "act": "№2",
@@ -228,7 +237,8 @@
     "damaged": "Отсутствуют",
     "source": "act10_investigation.pdf",
     "remediation": [],
-    "tags": []
+    "tags": [],
+    "year": 2024
   },
   {
     "act": "№3",
@@ -251,7 +261,8 @@
       "AE 557",
       "HIMA",
       "NTRON 509"
-    ]
+    ],
+    "year": 2024
   },
   {
     "act": "№4",
@@ -270,7 +281,8 @@
     "damaged": "Отсутствуют",
     "source": "act12_investigation.pdf",
     "remediation": [],
-    "tags": []
+    "tags": [],
+    "year": 2024
   },
   {
     "act": "№1",
@@ -292,7 +304,8 @@
     "remediation": [],
     "tags": [
       "MOV7501"
-    ]
+    ],
+    "year": 2025
   },
   {
     "act": "№1",
@@ -314,7 +327,8 @@
     "remediation": [],
     "tags": [
       "PDIT-563"
-    ]
+    ],
+    "year": 2026
   },
   {
     "act": "№4",
@@ -343,7 +357,8 @@
     ],
     "tags": [
       "CDP"
-    ]
+    ],
+    "year": 2023
   },
   {
     "act": "№3",
@@ -364,7 +379,8 @@
     "remediation": [],
     "tags": [
       "XV 222"
-    ]
+    ],
+    "year": 2018
   },
   {
     "act": "№4",
@@ -384,7 +400,8 @@
     "damaged": "Отсутствуют",
     "source": "act23_investigation.pdf",
     "remediation": [],
-    "tags": []
+    "tags": [],
+    "year": 2018
   },
   {
     "act": "№6",
@@ -405,7 +422,8 @@
     "remediation": [],
     "tags": [
       "FCV-780"
-    ]
+    ],
+    "year": 2018
   },
   {
     "act": "№7",
@@ -427,7 +445,8 @@
     "tags": [
       "TE 403-1A",
       "TE 403-1B"
-    ]
+    ],
+    "year": 2018
   },
   {
     "act": "№1",
@@ -449,7 +468,8 @@
     "tags": [
       "TE 401-1A",
       "TE 401-1B"
-    ]
+    ],
+    "year": 2018
   },
   {
     "act": "№2",
@@ -469,7 +489,8 @@
     "damaged": "Отсутствуют",
     "source": "act25_investigation.pdf",
     "remediation": [],
-    "tags": []
+    "tags": [],
+    "year": 2018
   },
   {
     "act": "№5",
@@ -491,7 +512,8 @@
     "tags": [
       "VT-457",
       "ГГ 6800"
-    ]
+    ],
+    "year": 2018
   },
   {
     "act": "№8",
@@ -513,7 +535,8 @@
     "remediation": [],
     "tags": [
       "К51-PR122/P"
-    ]
+    ],
+    "year": 2018
   },
   {
     "act": "№9",
@@ -535,7 +558,8 @@
     "remediation": [],
     "tags": [
       "CDVR"
-    ]
+    ],
+    "year": 2018
   },
   {
     "act": "№1",
@@ -557,7 +581,8 @@
     "tags": [
       "MTL8000",
       "UCP-1"
-    ]
+    ],
+    "year": 2019
   },
   {
     "act": "№2",
@@ -585,7 +610,8 @@
       "ESDV1201",
       "ESDV1202",
       "SCADA"
-    ]
+    ],
+    "year": 2019
   },
   {
     "act": "№3",
@@ -605,7 +631,8 @@
     "damaged": "Не обнаружено",
     "source": "act31_investigation.pdf",
     "remediation": [],
-    "tags": []
+    "tags": [],
+    "year": 2019
   },
   {
     "act": "№4",
@@ -628,7 +655,8 @@
       "CPUA",
       "HIMA",
       "UCP2"
-    ]
+    ],
+    "year": 2019
   },
   {
     "act": "№5",
@@ -653,7 +681,8 @@
       "PXP",
       "SCADA",
       "SUVT"
-    ]
+    ],
+    "year": 2019
   },
   {
     "act": "№6",
@@ -675,6 +704,7 @@
     "remediation": [],
     "tags": [
       "НУ-640"
-    ]
+    ],
+    "year": 2019
   }
 ]
