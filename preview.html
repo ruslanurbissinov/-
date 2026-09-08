@@ -126,6 +126,9 @@
   .ai-disclaimer{font-size:11px;color:var(--text-muted);margin-top:2px;padding-top:10px;border-top:1px dashed var(--border);}
   .reg-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px;}
   .reg-row:last-child{border-bottom:none;}
+  .reg-row.clickable{cursor:pointer;border-radius:6px;padding-left:6px;padding-right:6px;margin:0 -6px;transition:background 0.12s;}
+  .reg-row.clickable:hover{background:var(--surface);}
+  .reg-row.clickable:hover .reg-cat{color:var(--navy);font-weight:700;}
   .reg-cat{flex:1;color:var(--text);}
   .reg-count{flex:0 0 auto;background:var(--coral-bg);color:var(--coral);font-weight:700;padding:2px 9px;border-radius:12px;font-size:11.5px;white-space:nowrap;}
   .reg-dates{flex:0 0 150px;text-align:right;color:var(--text-muted);font-size:11.5px;}
@@ -158,6 +161,7 @@
       <select id="fGpa" disabled><option value="" id="fGpaAll">Все ГПА</option></select>
       <select id="fCat" disabled><option value="" id="fCatAll">Все категории</option></select>
       <select id="fYear" disabled><option value="" id="fYearAll">Все годы</option></select>
+      <select id="fType" style="display:none;"><option value=""></option></select>
       <button id="reset" type="button" disabled>Сбросить</button>
       <button id="langToggle2" type="button" class="lang-btn lang-btn-toolbar">EN</button>
       <label class="file-btn" for="reportFile" id="uploadLabel">&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)</label>
@@ -180,7 +184,7 @@
 <script>
 var incidents = [];
 var LANG = 'ru';
-var BUILD_STAMP = '2026-09-08 09:16';
+var BUILD_STAMP = '2026-09-08 09:25';
 function FS(ru, en) { return LANG==='en' ? en : ru; }
 var CAT_EN = {
   'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
@@ -327,14 +331,15 @@ function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&l
 function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 
 function initFilters() {
-  var allGpa=[], allCat=[], allYear=[];
+  var allGpa=[], allCat=[], allYear=[], allType=[];
   for (var i=0;i<incidents.length;i++) {
     var inc = incidents[i];
     for (var j=0;j<inc.gpa.length;j++) { allGpa.push(inc.gpa[j]); }
     allCat.push(inc.category);
     allYear.push(inc.date.slice(-4));
+    allType.push(inc.type);
   }
-  fillSelect('fGpa', allGpa); fillSelect('fCat', allCat); fillSelect('fYear', allYear);
+  fillSelect('fGpa', allGpa); fillSelect('fCat', allCat); fillSelect('fYear', allYear); fillSelect('fType', allType);
   document.getElementById('q').disabled = false;
   document.getElementById('fGpa').disabled = false;
   document.getElementById('fCat').disabled = false;
@@ -649,6 +654,7 @@ function render() {
   var fGpa = document.getElementById('fGpa').value;
   var fCat = document.getElementById('fCat').value;
   var fYear = document.getElementById('fYear').value;
+  var fType = document.getElementById('fType').value;
   function runPass(allowWords) {
     var out = [];
     for (var i=0;i<incidents.length;i++) {
@@ -658,6 +664,7 @@ function render() {
       if (fGpa && !arrayContains(inc.gpa, fGpa)) continue;
       if (fCat && inc.category!==fCat) continue;
       if (fYear && inc.date.slice(-4)!==fYear) continue;
+      if (fType && inc.type!==fType) continue;
       var pct = tokenCoverage(inc, tokens, allowWords);
       if (tokens.length && pct < 0.25) continue;
       out.push({inc:inc, score:score, pct:pct});
@@ -672,7 +679,7 @@ function render() {
   }
   scored.sort(function(a,b){ if (b.pct!==a.pct) { return b.pct-a.pct; } return b.score-a.score; });
   var countHtml = FS('Найдено: ','Found: ')+'<b>'+scored.length+'</b> '+FS('из','of')+' '+incidents.length+(tokens.length?FS(' (схожесть от 100% до 25%)',' (25–100% match)')+(usedFallback?FS(' · по смыслу, точных тегов не найдено',' · no exact tags, matched by meaning'):''):'');
-  if ((fGpa || fCat) && scored.length) {
+  if ((fGpa || fCat || fType) && scored.length) {
     var yrs = [];
     for (var yi=0; yi<scored.length; yi++) { yrs.push(scored[yi].inc.date.slice(-4)); }
     var yMin = yrs.reduce(function(a,b){ return a<b?a:b; });
@@ -704,6 +711,7 @@ document.getElementById('reset').addEventListener('click', function(){
   document.getElementById('fGpa').value='';
   document.getElementById('fCat').value='';
   document.getElementById('fYear').value='';
+  document.getElementById('fType').value='';
   setFileStatus('');
   render();
 });
@@ -1086,8 +1094,8 @@ function percentYearChartHtml(data, title) {
   if (!data.length) { html += '<div style="color:var(--text-muted);font-size:13px;">'+T('dashNoData')+'</div>'; }
   for (var i=0;i<data.length;i++) {
     var h = Math.max(4, data[i].value);
-    html += '<div class="yearbar-col"><div class="yearbar-val">'+data[i].value+'%</div>' +
-      '<div class="yearbar" style="height:'+h+'%;background:var(--coral);" title="'+data[i].repeat+' '+FS('из','of')+' '+data[i].total+'"></div>' +
+    html += '<div class="yearbar-col clickable" data-filter-key="fYear" data-filter-value="'+escapeHtml(data[i].label)+'" title="'+data[i].repeat+' '+FS('из','of')+' '+data[i].total+'"><div class="yearbar-val">'+data[i].value+'%</div>' +
+      '<div class="yearbar" style="height:'+h+'%;background:var(--coral);"></div>' +
       '<div class="yearbar-lbl">'+escapeHtml(data[i].label)+'</div></div>';
   }
   html += '</div></div>';
@@ -1115,7 +1123,7 @@ function repeatRegistryHtml(rows) {
   if (!rows.length) { html += '<div style="color:var(--text-muted);font-size:13px;">'+T('dashRegistryEmpty')+'</div>'; }
   for (var i=0;i<rows.length;i++) {
     var r = rows[i];
-    html += '<div class="reg-row"><div class="reg-cat">'+escapeHtml(trCat(r.category))+'</div>' +
+    html += '<div class="reg-row clickable" data-filter-key="fCat" data-filter-value="'+escapeHtml(r.category)+'"><div class="reg-cat">'+escapeHtml(trCat(r.category))+'</div>' +
       '<div class="reg-count">'+r.count+' '+T('times')+'</div>' +
       '<div class="reg-dates">'+escapeHtml(r.first)+' &rarr; '+escapeHtml(r.last)+'</div></div>';
   }
@@ -1246,7 +1254,7 @@ function renderDashboard() {
   html += yearChartHtml(byYear);
   html += chartCardHtml(T('dashByGpa'), byGpa, 'var(--teal)', null, trGpa, 'fGpa');
   html += chartCardHtml(T('dashTopCat'), byCategory, 'var(--navy)', 8, trCat, 'fCat');
-  html += chartCardHtml(T('dashByType'), byType, 'var(--coral)', null, trType);
+  html += chartCardHtml(T('dashByType'), byType, 'var(--coral)', null, trType, 'fType');
 
   var repeatByYear = computeRepeatRateByYear(accs);
   var registry = computeRepeatRegistry(accs);
@@ -1275,13 +1283,14 @@ function goToFilteredSearch(filterKey, filterValue) {
   document.getElementById('fGpa').value = '';
   document.getElementById('fCat').value = '';
   document.getElementById('fYear').value = '';
+  document.getElementById('fType').value = '';
   if (filterKey) { document.getElementById(filterKey).value = filterValue; }
   switchTab('search');
   render();
   document.getElementById('results').scrollIntoView({behavior:'smooth', block:'start'});
 }
 function wireDashClicks(root) {
-  var clickable = root.querySelectorAll('.bar-row.clickable, .stat-card.clickable');
+  var clickable = root.querySelectorAll('[data-filter-key], [data-reset-filters]');
   for (var i=0;i<clickable.length;i++) {
     (function(el){
       el.addEventListener('click', function(){
