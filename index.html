@@ -212,7 +212,7 @@
 var incidents = [];
 var library = [];
 var LANG = 'ru';
-var BUILD_STAMP = '2026-09-09 05:36';
+var BUILD_STAMP = '2026-09-09 05:44';
 function FS(ru, en) { return LANG==='en' ? en : ru; }
 var CAT_EN = {
   'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
@@ -256,7 +256,7 @@ var I18N = {
     circumstances:'Обстоятельства, при которых произошел останов:',
     showDetails:'Показать меры и заключение &#9662;', hideDetails:'Скрыть детали &#9652;',
     conclusion:'Заключение:', measuresTaken:'Принятые меры (немедленные):',
-    tabInvestigation:'Акт расследования', tabWorkOrder:'Акт выполненных работ', tabVenting:'Акт стравливания',
+    tabInvestigation:'Акт расследования', tabWorkOrder:'Акт выполненных работ', tabVenting:'Объём газа',
     workDescription:'Выполненные работы:', materialsUsed:'Использованные материалы:',
     partNumber:'парт-номер', workDate:'Дата выполнения:', workStatus:'Статус:',
     materialsNoData:'Часть данных не указана в первичном акте.',
@@ -269,7 +269,7 @@ var I18N = {
     recWhatToDo:'Что делать:', recFormalRec:'Рекомендация по итогам расследования:',
     damagedEquip:'Повреждённое оборудование:', noWorkOrder:'Отдельный акт выполненных работ по этому случаю не оформлялся — устранение выполнено в рамках немедленных мер (см. вкладку «Акт расследования»).',
     ventedVolume:'Объём стравленного газа:', ventedPressureBefore:'Давление до стравливания:', ventedPressureAfter:'Давление после стравливания:', ventedContour:'Стравленный контур:',
-    noVentingAct:'Отдельный акт стравливания по этому случаю не оформлялся — данные об объёме стравленного газа не зафиксированы.', openVentingAct:'Открыть акт стравливания',
+    noVentingAct:'Данные об объёме стравленного газа не зафиксированы в акте технического расследования по этому случаю.', ventedSource:'Данные приведены по акту технического расследования:', openVentingAct:'Открыть акт расследования',
     exactTime:'Время:',
     aiTitle:'&#129302; AI Анализ', aiProbableCause:'Вероятная причина', aiConfidence:'Уверенность',
     aiBasis:'Основание', aiWhatToCheck:'Что проверить', aiDocs:'Документы', aiPrevention:'Профилактика',
@@ -327,7 +327,7 @@ var I18N = {
     circumstances:'Circumstances of the shutdown:',
     showDetails:'Show measures &amp; conclusion &#9662;', hideDetails:'Hide details &#9652;',
     conclusion:'Conclusion:', measuresTaken:'Immediate measures taken:',
-    tabInvestigation:'Investigation report', tabWorkOrder:'Completion report', tabVenting:'Gas venting report',
+    tabInvestigation:'Investigation report', tabWorkOrder:'Completion report', tabVenting:'Gas volume',
     workDescription:'Work performed:', materialsUsed:'Materials used:',
     partNumber:'part no.', workDate:'Completion date:', workStatus:'Status:',
     materialsNoData:'Some details are not specified in the source report.',
@@ -340,7 +340,7 @@ var I18N = {
     recWhatToDo:'What to do:', recFormalRec:'Investigation recommendation:',
     damagedEquip:'Damaged equipment:', noWorkOrder:'No separate completion report was filed for this case — the fix was carried out as part of the immediate measures (see the "Investigation report" tab).',
     ventedVolume:'Vented gas volume:', ventedPressureBefore:'Pressure before venting:', ventedPressureAfter:'Pressure after venting:', ventedContour:'Vented circuit:',
-    noVentingAct:'No separate gas venting report was filed for this case — vented volume data is not recorded.', openVentingAct:'Open venting report',
+    noVentingAct:'Vented gas volume data is not recorded in the investigation report for this case.', ventedSource:'Data taken from the investigation report:', openVentingAct:'Open investigation report',
     exactTime:'Time:',
     aiTitle:'&#129302; AI Analysis', aiProbableCause:'Probable cause', aiConfidence:'Confidence',
     aiBasis:'Basis', aiWhatToCheck:'What to check', aiDocs:'Documents', aiPrevention:'Prevention',
@@ -625,7 +625,12 @@ function buildCard(inc, tokens, scoreBadge) {
 
   var hasWork = inc.remediation && inc.remediation.length > 0;
   var vent = inc.venting || null;
-  var hasVenting = !!(vent && (vent.volume_m3 !== undefined && vent.volume_m3 !== null || vent.source));
+  var hasVenting = !!(vent && (
+    (vent.volume_m3 !== undefined && vent.volume_m3 !== null) ||
+    vent.contour ||
+    (vent.pressure_before_mpa !== undefined && vent.pressure_before_mpa !== null) ||
+    (vent.pressure_after_mpa !== undefined && vent.pressure_after_mpa !== null)
+  ));
 
   htmlStr += '<div class="card-subtabs">';
   htmlStr += '<button class="subtab-btn active" type="button" data-tab="inv">'+T('tabInvestigation')+'</button>';
@@ -684,7 +689,7 @@ function buildCard(inc, tokens, scoreBadge) {
     htmlStr += '</div>';
   }
 
-  // --- Venting act pane ---
+  // --- Gas volume pane (данные берутся из акта технического расследования) ---
   htmlStr += '<div class="subtab-pane" data-pane="vent" style="display:none;">';
   if (!hasVenting) {
     htmlStr += '<p style="color:var(--text-muted);">'+T('noVentingAct')+'</p>';
@@ -699,8 +704,8 @@ function buildCard(inc, tokens, scoreBadge) {
     if (vent.pressure_after_mpa !== undefined && vent.pressure_after_mpa !== null) {
       htmlStr += '<p><b>'+T('ventedPressureAfter')+'</b> '+escapeHtml(String(vent.pressure_after_mpa))+' &#1052;&#1055;&#1072;</p>';
     }
-    if (vent.source) {
-      htmlStr += '<p><b>'+T('docs')+'</b> <a class="doc-link" href="'+encodeURIComponent(vent.source)+'" target="_blank">'+T('openVentingAct')+'</a></p>';
+    if (inc.source) {
+      htmlStr += '<p><b>'+T('ventedSource')+'</b> <a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">'+T('openVentingAct')+'</a></p>';
     }
   }
   htmlStr += '</div>';
