@@ -25,6 +25,7 @@ from openpyxl.utils import get_column_letter
 BASE_DIR = Path(__file__).parent
 DATA_FILE = BASE_DIR / 'accidents.json'
 DEFECTS_FILE = BASE_DIR / 'defects.json'
+LIBRARY_FILE = BASE_DIR / 'library.json'
 XLSX_OUT = BASE_DIR / 'База_аварийных_остановов_ГПА.xlsx'
 HTML_OUT = BASE_DIR / 'Поиск_по_базе_аварий.html'
 
@@ -126,6 +127,13 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
   .tab-btn{{flex:1;padding:11px 14px;font-size:13.5px;font-weight:600;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text-muted);cursor:pointer;box-shadow:0 2px 10px rgba(15,36,64,0.06);}}
   .tab-btn.active{{background:var(--navy);color:#fff;border-color:var(--navy);}}
   .tab-btn:hover:not(.active){{background:#EDF1F5;}}
+  .tag.libcat{{background:#D9F0E8;color:#0F6E4E;}}
+  .lib-card{{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:12px;}}
+  .lib-card h3{{margin:0 0 6px;font-size:15px;font-weight:600;color:var(--text);}}
+  .lib-card .lib-desc{{font-size:13.5px;color:var(--text-muted);margin:0 0 8px;}}
+  .lib-card .lib-equip{{font-size:12.5px;color:var(--navy);font-weight:600;margin:0 0 8px;}}
+  .lib-empty{{text-align:center;color:var(--text-muted);padding:60px 10px;font-size:14px;}}
+  .lib-empty div{{font-size:28px;margin-bottom:8px;}}
   .dash-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:16px;}}
   .stat-card{{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}}
   .stat-card .num{{font-size:24px;font-weight:700;color:var(--navy);line-height:1.2;}}
@@ -201,6 +209,7 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
   <div class="tabs">
     <button class="tab-btn active" id="tabSearchBtn" type="button">&#128269; Поиск по остановам</button>
     <button class="tab-btn" id="tabDashBtn" type="button">&#128202; Dashboard</button>
+    <button class="tab-btn" id="tabLibraryBtn" type="button">&#128218; Библиотека</button>
   </div>
   <div id="searchView">
   <div class="toolbar">
@@ -231,9 +240,27 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
   <div id="dashboardView" style="display:none;">
     <div id="dashContent"><div class="loading">Загрузка данных...</div></div>
   </div>
+  <div id="libraryView" style="display:none;">
+    <div class="toolbar">
+      <div class="search-row">
+        <input id="libQ" type="text" placeholder="Например: MOOG DS2000XP, ABB, руководство по эксплуатации..." autocomplete="off">
+      </div>
+      <div class="filters">
+        <select id="libFCat"><option value="" id="libFCatAll">Все категории</option></select>
+        <select id="libFEquip"><option value="" id="libFEquipAll">Всё оборудование</option></select>
+        <button id="libReset" type="button">Сбросить</button>
+      </div>
+    </div>
+    <div class="meta-row">
+      <span class="left" id="libCount"></span>
+    </div>
+    <div id="libResults"><div class="loading">Загрузка данных...</div></div>
+    <div class="src-note" id="libSrcNote">Документы библиотеки (руководства по эксплуатации, сервисные бюллетени, рекомендательные письма) — библиотека загружается из library.json, файлы лежат в репозитории</div>
+  </div>
 </div>
 <script>
 var incidents = [];
+var library = [];
 var LANG = 'ru';
 var BUILD_STAMP = '';
 function FS(ru, en) {{ return LANG==='en' ? en : ru; }}
@@ -263,7 +290,14 @@ var I18N = {{
   ru: {{
     title:'Поиск по базе авто остановов ГПА',
     subtitle:'Умная система анализа авто остановов и помощи инженерам &middot; КС',
-    tabSearch:'&#128269; Поиск по остановам', tabDash:'&#128202; Dashboard',
+    tabSearch:'&#128269; Поиск по остановам', tabDash:'&#128202; Dashboard', tabLibrary:'&#128218; Библиотека',
+    libSearchPlaceholder:'Например: MOOG DS2000XP, ABB, руководство по эксплуатации...',
+    libAllCat:'Все категории', libAllEquip:'Всё оборудование', libReset:'Сбросить',
+    libCategoryManual:'Руководство по эксплуатации', libCategoryBulletin:'Сервисный бюллетень', libCategoryLetter:'Рекомендательное письмо', libCategoryOther:'Прочее',
+    libDocsFound:'Найдено документов:', libOpenDoc:'Открыть документ', libDate:'Дата:', libIssuer:'Источник:',
+    libEmptyTitle:'Библиотека пока пуста', libEmptyBody:'Загрузите руководства по эксплуатации, сервисные бюллетени и рекомендательные письма — они появятся здесь и будут учитываться в рекомендациях AI-анализа при расследовании похожих случаев.',
+    libSrcNote:'Документы библиотеки (руководства по эксплуатации, сервисные бюллетени, рекомендательные письма) &middot; библиотека загружается из library.json, файлы — в репозитории',
+    aiLibraryDocs:'Рекомендуемые документы из библиотеки',
     searchPlaceholder:'Например: свечной кран, потеря пламени, RB6-2, ГПА№2...',
     allGpa:'Все ГПА', allCat:'Все категории', allYear:'Все годы', reset:'Сбросить', allStation:'Все станции',
     uploadLabel:'&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)',
@@ -327,7 +361,14 @@ var I18N = {{
   en: {{
     title:'GPA Emergency Shutdown Database Search',
     subtitle:'Smart shutdown analysis and engineer support system &middot; CS',
-    tabSearch:'&#128269; Search Shutdowns', tabDash:'&#128202; Dashboard',
+    tabSearch:'&#128269; Search Shutdowns', tabDash:'&#128202; Dashboard', tabLibrary:'&#128218; Library',
+    libSearchPlaceholder:'e.g.: MOOG DS2000XP, ABB, operation manual...',
+    libAllCat:'All categories', libAllEquip:'All equipment', libReset:'Reset',
+    libCategoryManual:'Operation manual', libCategoryBulletin:'Service bulletin', libCategoryLetter:'Advisory letter', libCategoryOther:'Other',
+    libDocsFound:'Documents found:', libOpenDoc:'Open document', libDate:'Date:', libIssuer:'Issued by:',
+    libEmptyTitle:'The library is empty', libEmptyBody:'Upload operation manuals, service bulletins, and advisory letters — they will appear here and will be used in the AI-analysis recommendations for similar cases.',
+    libSrcNote:'Library documents (operation manuals, service bulletins, advisory letters) &middot; loaded from library.json, files are stored in the repository',
+    aiLibraryDocs:'Recommended documents from the library',
     searchPlaceholder:'e.g.: ignition valve, flame loss, RB6-2, GPU#2...',
     allGpa:'All units', allCat:'All categories', allYear:'All years', reset:'Reset', allStation:'All stations',
     uploadLabel:'&#128206; Upload incident report (PDF, Word, TXT, photo)',
@@ -428,6 +469,92 @@ function fillSelect(id, values) {{
     sel.appendChild(o);
   }}
 }}
+
+function trLibCat(v) {{
+  if (v === 'Руководство по эксплуатации') return T('libCategoryManual');
+  if (v === 'Сервисный бюллетень') return T('libCategoryBulletin');
+  if (v === 'Рекомендательное письмо') return T('libCategoryLetter');
+  return T('libCategoryOther');
+}}
+
+function initLibFilters() {{
+  var allCat=[], allEquip=[];
+  for (var i=0;i<library.length;i++) {{
+    if (library[i].category) allCat.push(library[i].category);
+    if (library[i].equipment) allEquip.push(library[i].equipment);
+  }}
+  document.getElementById('libFCat').innerHTML = '';
+  document.getElementById('libFEquip').innerHTML = '';
+  var catOpt0 = document.createElement('option'); catOpt0.value=''; catOpt0.id='libFCatAll'; catOpt0.textContent = T('libAllCat');
+  document.getElementById('libFCat').appendChild(catOpt0);
+  var equipOpt0 = document.createElement('option'); equipOpt0.value=''; equipOpt0.id='libFEquipAll'; equipOpt0.textContent = T('libAllEquip');
+  document.getElementById('libFEquip').appendChild(equipOpt0);
+  fillSelect('libFCat', allCat);
+  fillSelect('libFEquip', allEquip);
+  var catOpts = document.querySelectorAll('#libFCat option[value]:not([value=""])');
+  for (var c=0;c<catOpts.length;c++) {{ catOpts[c].textContent = trLibCat(catOpts[c].value); }}
+}}
+
+function libMatches(doc, q) {{
+  if (!q) return true;
+  var hay = normalize([doc.title, doc.equipment, doc.description, (doc.tags||[]).join(' ')].join(' '));
+  var toks = tokenize(q);
+  for (var i=0;i<toks.length;i++) {{ if (hay.indexOf(toks[i]) === -1) return false; }}
+  return true;
+}}
+
+function renderLibrary() {{
+  var q = document.getElementById('libQ').value;
+  var fCat = document.getElementById('libFCat').value;
+  var fEquip = document.getElementById('libFEquip').value;
+  var filtered = [];
+  for (var i=0;i<library.length;i++) {{
+    var doc = library[i];
+    if (fCat && doc.category !== fCat) continue;
+    if (fEquip && doc.equipment !== fEquip) continue;
+    if (!libMatches(doc, q)) continue;
+    filtered.push(doc);
+  }}
+  document.getElementById('libCount').innerHTML = T('libDocsFound') + ' <b>' + filtered.length + '</b> ' + FS('из', 'of') + ' ' + library.length;
+  var container = document.getElementById('libResults');
+  if (!filtered.length) {{
+    container.innerHTML = '<div class="lib-empty"><div>&#128218;</div>' +
+      '<div style="font-weight:600;margin-bottom:6px;">' + T('libEmptyTitle') + '</div>' +
+      '<div>' + T('libEmptyBody') + '</div></div>';
+    return;
+  }}
+  var html = '';
+  for (var j=0;j<filtered.length;j++) {{
+    var d = filtered[j];
+    html += '<div class="lib-card">';
+    html += '<div class="card-top">';
+    html += '<span class="tag libcat">' + escapeHtml(trLibCat(d.category)) + '</span>';
+    if (d.date) {{ html += '<span class="tag act">' + escapeHtml(d.date) + '</span>'; }}
+    html += '</div>';
+    html += '<h3>' + escapeHtml(d.title||'') + '</h3>';
+    if (d.equipment) {{ html += '<p class="lib-equip">' + escapeHtml(d.equipment) + '</p>'; }}
+    if (d.description) {{ html += '<p class="lib-desc">' + escapeHtml(d.description) + '</p>'; }}
+    if (d.tags && d.tags.length) {{
+      html += '<p class="equip-tags">';
+      for (var t=0;t<d.tags.length;t++) {{ html += '<span class="tag equip">' + escapeHtml(d.tags[t]) + '</span>'; }}
+      html += '</p>';
+    }}
+    if (d.issuer) {{ html += '<p style="font-size:12px;color:var(--text-muted);margin:0 0 6px;">' + T('libIssuer') + ' ' + escapeHtml(d.issuer) + '</p>'; }}
+    if (d.file) {{ html += '<p><a class="doc-link" href="' + encodeURIComponent(d.file) + '" target="_blank">' + T('libOpenDoc') + '</a></p>'; }}
+    html += '</div>';
+  }}
+  container.innerHTML = html;
+}}
+
+document.getElementById('libQ').addEventListener('input', renderLibrary);
+document.getElementById('libFCat').addEventListener('change', renderLibrary);
+document.getElementById('libFEquip').addEventListener('change', renderLibrary);
+document.getElementById('libReset').addEventListener('click', function(){{
+  document.getElementById('libQ').value = '';
+  document.getElementById('libFCat').value = '';
+  document.getElementById('libFEquip').value = '';
+  renderLibrary();
+}});
 
 var CYR2LAT_MAP = {{'а':'a','в':'b','е':'e','к':'k','м':'m','н':'h','о':'o','р':'p','с':'c','т':'t','у':'y','х':'x'}};
 function canonicalizeTagRun(run) {{
@@ -688,6 +815,23 @@ function tokenCoverage(inc, tokens) {{
   if (wordCov!==null) {{ return wordCov; }}
   return 0;
 }}
+function matchLibraryDocs(incidentTags, category) {{
+  if (!library.length) return [];
+  var wanted = {{}};
+  for (var i=0;i<incidentTags.length;i++) {{ wanted[normalize(incidentTags[i])] = true; }}
+  var matches = [];
+  for (var j=0;j<library.length;j++) {{
+    var doc = library[j];
+    var docTags = doc.tags || [];
+    var hit = false;
+    for (var t=0;t<docTags.length;t++) {{ if (wanted[normalize(docTags[t])]) {{ hit = true; break; }} }}
+    if (!hit && doc.equipment) {{
+      for (var w in wanted) {{ if (normalize(doc.equipment).indexOf(w) !== -1) {{ hit = true; break; }} }}
+    }}
+    if (hit) matches.push(doc);
+  }}
+  return matches.slice(0, 6);
+}}
 function buildAIAnalysis(scored) {{
   if (!scored.length) return '';
   var top = scored[0].inc;
@@ -743,6 +887,20 @@ function buildAIAnalysis(scored) {{
 
   if (preventionText) {{
     html += '<div class="ai-section"><div class="ai-label">'+T('aiPrevention')+'</div><div class="ai-value" style="font-weight:400;">'+escapeHtml(preventionText)+'</div></div>';
+  }}
+
+  var libMatchesArr = matchLibraryDocs(tagOrder, top.category);
+  if (libMatchesArr.length) {{
+    html += '<div class="ai-section"><div class="ai-label">'+T('aiLibraryDocs')+'</div>';
+    for (var ld=0; ld<libMatchesArr.length; ld++) {{
+      var lm = libMatchesArr[ld];
+      if (lm.file) {{
+        html += '<a class="doc-badge" href="'+encodeURIComponent(lm.file)+'" target="_blank">'+escapeHtml(lm.title)+'</a>';
+      }} else {{
+        html += '<span class="doc-badge">'+escapeHtml(lm.title)+'</span>';
+      }}
+    }}
+    html += '</div>';
   }}
 
   html += '<div class="ai-disclaimer">&#8505; '+T('aiDisclaimer')+'</div>';
@@ -1035,20 +1193,30 @@ document.getElementById('reportFile').addEventListener('change', function(e){{
 
 function switchTab(tab) {{
   var isSearch = tab === 'search';
+  var isDash = tab === 'dash';
+  var isLibrary = tab === 'library';
   document.getElementById('searchView').style.display = isSearch ? '' : 'none';
-  document.getElementById('dashboardView').style.display = isSearch ? 'none' : '';
+  document.getElementById('dashboardView').style.display = isDash ? '' : 'none';
+  document.getElementById('libraryView').style.display = isLibrary ? '' : 'none';
   document.getElementById('tabSearchBtn').classList.toggle('active', isSearch);
-  document.getElementById('tabDashBtn').classList.toggle('active', !isSearch);
-  if (!isSearch) {{ renderDashboard(); }}
+  document.getElementById('tabDashBtn').classList.toggle('active', isDash);
+  document.getElementById('tabLibraryBtn').classList.toggle('active', isLibrary);
+  if (isDash) {{ renderDashboard(); }}
+  if (isLibrary) {{ renderLibrary(); }}
 }}
 document.getElementById('tabSearchBtn').addEventListener('click', function(){{ switchTab('search'); }});
 document.getElementById('tabDashBtn').addEventListener('click', function(){{ switchTab('dash'); }});
+document.getElementById('tabLibraryBtn').addEventListener('click', function(){{ switchTab('library'); }});
 
 function applyLanguage() {{
   document.getElementById('pageTitle').textContent = T('title');
   document.getElementById('pageSubtitle').innerHTML = T('subtitle');
   document.getElementById('tabSearchBtn').innerHTML = T('tabSearch');
   document.getElementById('tabDashBtn').innerHTML = T('tabDash');
+  document.getElementById('tabLibraryBtn').innerHTML = T('tabLibrary');
+  document.getElementById('libQ').placeholder = T('libSearchPlaceholder');
+  document.getElementById('libReset').textContent = T('libReset');
+  document.getElementById('libSrcNote').innerHTML = T('libSrcNote');
   document.getElementById('q').placeholder = T('searchPlaceholder');
   document.getElementById('fGpaAll').textContent = T('allGpa');
   document.getElementById('fStationAll').textContent = T('allStation');
@@ -1068,6 +1236,8 @@ function applyLanguage() {{
   render();
   _dashRendered = false;
   if (document.getElementById('dashboardView').style.display !== 'none') {{ renderDashboard(); }}
+  initLibFilters();
+  if (document.getElementById('libraryView').style.display !== 'none') {{ renderLibrary(); }}
 }}
 document.getElementById('langToggle').addEventListener('click', function(){{
   LANG = (LANG==='ru') ? 'en' : 'ru';
@@ -1544,9 +1714,11 @@ function wireDashClicks(root) {{
 
 Promise.all([
   fetch('accidents.json').then(function(r){{ return r.json(); }}),
-  fetch('defects.json').then(function(r){{ return r.json(); }}).catch(function(){{ return []; }})
+  fetch('defects.json').then(function(r){{ return r.json(); }}).catch(function(){{ return []; }}),
+  fetch('library.json').then(function(r){{ return r.json(); }}).catch(function(){{ return []; }})
 ]).then(function(results){{
   var accidents = results[0], defects = results[1];
+  library = results[2] || [];
   incidents = [];
   for (var i=0;i<accidents.length;i++) {{
     var a = accidents[i];
@@ -1557,7 +1729,8 @@ Promise.all([
       prevention_measures:a.prevention_measures||'', damaged:a.damaged||'',
       downtime_min: (typeof a.downtime_min === 'number' ? a.downtime_min : undefined),
       station: a.station||'', report_source: a.report_source||'',
-      remediation:a.remediation||[], source:a.source, defect_source:a.defect_source, tags:a.tags||[]
+      remediation:a.remediation||[], source:a.source, defect_source:a.defect_source, tags:a.tags||[],
+      venting: a.venting || null
     }});
   }}
   for (var j=0;j<defects.length;j++) {{
@@ -1581,6 +1754,7 @@ Promise.all([
     }});
   }}
   initFilters();
+  initLibFilters();
   applyLanguage();
 }}).catch(function(err){{
   document.getElementById('results').innerHTML =
@@ -1596,13 +1770,15 @@ Promise.all([
 """
 
 
-def build_web_site(incidents, defects, out_dir):
+def build_web_site(incidents, defects, library, out_dir):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     with open(out_dir / 'accidents.json', 'w', encoding='utf-8') as f:
         json.dump(incidents, f, ensure_ascii=False, indent=2)
     with open(out_dir / 'defects.json', 'w', encoding='utf-8') as f:
         json.dump(defects, f, ensure_ascii=False, indent=2)
+    with open(out_dir / 'library.json', 'w', encoding='utf-8') as f:
+        json.dump(library, f, ensure_ascii=False, indent=2)
     # WEB_HTML_TEMPLATE не проходит через .format() (нет плейсхолдеров для подстановки),
     # поэтому двойные скобки {{ }}, унаследованные при написании шаблона, нужно свести
     # к обычным одиночным { } — иначе браузер не распознает CSS/JS.
@@ -1630,6 +1806,16 @@ def load_defects():
     if not DEFECTS_FILE.exists():
         return []
     with open(DEFECTS_FILE, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def load_library():
+    """Библиотека документов оборудования (руководства по эксплуатации, сервисные
+    бюллетени, рекомендательные письма) — используется поиском по библиотеке и
+    AI-анализом для рекомендаций по устранению причин."""
+    if not LIBRARY_FILE.exists():
+        return []
+    with open(LIBRARY_FILE, encoding='utf-8') as f:
         return json.load(f)
 
 
@@ -2371,8 +2557,10 @@ def build_html(incidents, defects):
 if __name__ == '__main__':
     incidents = load_data()
     defects = load_defects()
+    library = load_library()
     last_row = build_xlsx(incidents, defects)
     build_html(incidents, defects)
-    build_web_site(incidents, defects, BASE_DIR / 'site')
-    print(f'Готово: {len(incidents)} аварий, {len(defects)} отдельных дефектов -> '
+    build_web_site(incidents, defects, library, BASE_DIR / 'site')
+    print(f'Готово: {len(incidents)} аварий, {len(defects)} отдельных дефектов, '
+          f'{len(library)} документов в библиотеке -> '
           f'{XLSX_OUT.name}, {HTML_OUT.name}, site/index.html')
