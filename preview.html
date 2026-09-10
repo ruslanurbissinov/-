@@ -110,6 +110,7 @@
   .chart-hint{font-size:11px;color:var(--text-muted);margin:-6px 0 12px;}
   .chart-hint.back-link{color:var(--teal);font-weight:600;cursor:pointer;margin:0 0 12px;}
   .chart-hint.back-link:hover{text-decoration:underline;}
+  .drill-crumbs{margin:0 0 12px;line-height:1.6;}
   .yearbar{width:100%;max-width:38px;background:var(--teal);border-radius:4px 4px 0 0;transition:height .2s;}
   .yearbar-lbl{font-size:11px;color:var(--text-muted);margin-top:5px;}
   .yearbar-val{font-size:11.5px;font-weight:600;color:var(--text);margin-bottom:3px;}
@@ -212,7 +213,7 @@
 var incidents = [];
 var library = [];
 var LANG = 'ru';
-var BUILD_STAMP = '2026-09-09 06:56';
+var BUILD_STAMP = '2026-09-10 03:01';
 function FS(ru, en) { return LANG==='en' ? en : ru; }
 var CAT_EN = {
   'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
@@ -289,6 +290,15 @@ var I18N = {
     dashMonthChart:'Динамика авто остановов по месяцам &mdash; ', backToYears:'&larr; Назад к годам',
     clickYearHint:'Нажмите на год, чтобы посмотреть по месяцам',
     monthNames:['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'],
+    dashByStation:'Автоматические остановы по КС &mdash; общее количество',
+    clickStationHint:'Нажмите на станцию, чтобы посмотреть агрегаты',
+    clickStationGpaHint:'Нажмите на агрегат, чтобы посмотреть по годам',
+    clickStationYearHint:'Нажмите на год, чтобы посмотреть по месяцам',
+    clickStationMonthHint:'Нажмите на месяц, чтобы открыть акты расследования',
+    backToStations:'&larr; Назад к станциям', backToStationGpas:'&larr; Назад к агрегатам',
+    backToStationYears:'&larr; Назад к годам', backToStationMonths:'&larr; Назад к месяцам',
+    drillIncidentsFor:'Остановы за', drillOpenAct:'Открыть акт расследования',
+    drillNoAct:'PDF акта расследования не приложен к этой записи.',
     dashTopCat:'Топ повторяющихся причин / категорий', dashByType:'По типу останова', dashNoData:'Нет данных',
     dashMetricsTitle:'&#128200; Метрики эффективности', dashGoal:'Цель системы:',
     dashGoalText:'снизить долю повторных авто остановов на 40% и сократить время анализа причины с 3&ndash;5 суток (ручной пролистывание архива актов) до 1 рабочего дня за счёт мгновенного поиска похожих случаев по базе.',
@@ -360,6 +370,15 @@ var I18N = {
     dashMonthChart:'Shutdowns by month &mdash; ', backToYears:'&larr; Back to years',
     clickYearHint:'Click a year to see the monthly breakdown',
     monthNames:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    dashByStation:'Automatic shutdowns by station &mdash; total count',
+    clickStationHint:'Click a station to see its units',
+    clickStationGpaHint:'Click a unit to see the yearly breakdown',
+    clickStationYearHint:'Click a year to see the monthly breakdown',
+    clickStationMonthHint:'Click a month to open the investigation reports',
+    backToStations:'&larr; Back to stations', backToStationGpas:'&larr; Back to units',
+    backToStationYears:'&larr; Back to years', backToStationMonths:'&larr; Back to months',
+    drillIncidentsFor:'Shutdowns for', drillOpenAct:'Open investigation report',
+    drillNoAct:'No investigation report PDF is attached to this record.',
     dashTopCat:'Top recurring causes / categories', dashByType:'By shutdown type', dashNoData:'No data',
     dashMetricsTitle:'&#128200; Efficiency metrics', dashGoal:'System goal:',
     dashGoalText:'reduce the share of repeat emergency shutdowns by 40% and cut root-cause analysis time from 3&ndash;5 days (manually paging through the report archive) to 1 working day via instant search across similar past cases.',
@@ -1485,6 +1504,129 @@ function byGpaStationChartHtml(accs) {
   html += '</div>';
   return html;
 }
+
+// ===== Drill-down: КС -> ГПА -> год -> месяц -> акт расследования =====
+var _stationDrill = { station: null, gpa: null, year: null, month: null };
+
+function stationDrillVerticalBars(items, colorVar, onClickFnName) {
+  var maxVal = 0;
+  for (var i=0;i<items.length;i++) { if (items[i].value>maxVal) maxVal = items[i].value; }
+  var html = '<div class="yearbars">';
+  for (var j=0;j<items.length;j++) {
+    var h = maxVal>0 ? Math.max(6, Math.round(100*items[j].value/maxVal)) : 6;
+    var argLit = items[j].arg;
+    html += '<div class="yearbar-col clickable" onclick="'+onClickFnName+'(&#39;'+escapeHtml(String(argLit))+'&#39;)"><div class="yearbar-val">'+items[j].value+'</div>' +
+      '<div class="yearbar" style="height:'+h+'%;background:'+colorVar+';"></div>' +
+      '<div class="yearbar-lbl">'+escapeHtml(items[j].label)+'</div></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function stationDrillCrumbs() {
+  var parts = [];
+  parts.push('<span class="chart-hint back-link" onclick="drillGoStations()">'+T('backToStations')+'</span>');
+  if (_stationDrill.station) {
+    var label = trStation(_stationDrill.station);
+    if (_stationDrill.gpa) {
+      parts.push('<span class="chart-hint back-link" onclick="drillGoGpas(&#39;'+escapeHtml(_stationDrill.station)+'&#39;)">'+T('backToStationGpas')+' &middot; '+escapeHtml(label)+'</span>');
+    }
+  }
+  if (_stationDrill.gpa && _stationDrill.year) {
+    parts.push('<span class="chart-hint back-link" onclick="drillGoYears()">'+T('backToStationYears')+' &middot; '+escapeHtml(trGpa(_stationDrill.gpa))+'</span>');
+  }
+  if (_stationDrill.year && _stationDrill.month !== null) {
+    parts.push('<span class="chart-hint back-link" onclick="drillGoMonths()">'+T('backToStationMonths')+' &middot; '+escapeHtml(_stationDrill.year)+'</span>');
+  }
+  return '<div class="drill-crumbs">' + parts.join(' <span style="color:var(--border);">&#8203;|&#8203;</span> ') + '</div>';
+}
+
+function stationDrillAccsForStation(station) {
+  return _dashAccs.filter(function(a) { return (a.station||'') === station; });
+}
+function stationDrillAccsForGpa(station, gpa) {
+  return _dashAccs.filter(function(a) { return (a.station||'') === station && a.gpa && a.gpa.indexOf(gpa) !== -1; });
+}
+
+function renderStationDrill() {
+  var container = document.getElementById('stationDrillContainer');
+  if (!container) return;
+  var html = '<h4>'+T('dashByStation')+'</h4>';
+
+  if (!_stationDrill.station) {
+    html += '<div class="chart-hint">'+T('clickStationHint')+'</div>';
+    var byStation = countBy(_dashAccs, function(inc){ return inc.station || '\u2014'; });
+    var items = [];
+    for (var i=0;i<byStation.length;i++) { items.push({label: trStation(byStation[i].label), value: byStation[i].value, arg: byStation[i].label}); }
+    html += stationDrillVerticalBars(items, 'var(--navy)', 'drillGoGpas');
+  } else if (!_stationDrill.gpa) {
+    html += stationDrillCrumbs();
+    html += '<div class="chart-hint">'+T('clickStationGpaHint')+'</div>';
+    var accsSt = stationDrillAccsForStation(_stationDrill.station);
+    var byGpa = countBy(accsSt, function(inc){ return inc.gpa; });
+    var items2 = [];
+    for (var j=0;j<byGpa.length;j++) { items2.push({label: trGpa(byGpa[j].label), value: byGpa[j].value, arg: byGpa[j].label}); }
+    html += stationDrillVerticalBars(items2, 'var(--teal)', 'drillGoYears');
+  } else if (!_stationDrill.year) {
+    html += stationDrillCrumbs();
+    html += '<div class="chart-hint">'+T('clickStationYearHint')+'</div>';
+    var accsGpa = stationDrillAccsForGpa(_stationDrill.station, _stationDrill.gpa);
+    var byYear = countBy(accsGpa, function(inc){ return inc.date.slice(-4); });
+    byYear.sort(function(a,b){ return a.label < b.label ? -1 : (a.label > b.label ? 1 : 0); });
+    var items3 = [];
+    for (var k=0;k<byYear.length;k++) { items3.push({label: byYear[k].label, value: byYear[k].value, arg: byYear[k].label}); }
+    html += stationDrillVerticalBars(items3, 'var(--coral)', 'drillGoMonths');
+  } else if (_stationDrill.month === null) {
+    html += stationDrillCrumbs();
+    html += '<div class="chart-hint">'+T('clickStationMonthHint')+'</div>';
+    var accsYear = stationDrillAccsForGpa(_stationDrill.station, _stationDrill.gpa).filter(function(a){ return a.date.slice(-4) === _stationDrill.year; });
+    var counts = [0,0,0,0,0,0,0,0,0,0,0,0];
+    for (var m=0;m<accsYear.length;m++) {
+      var parts = (accsYear[m].date||'').split('.');
+      if (parts.length<2) continue;
+      var mi = parseInt(parts[1],10);
+      if (mi>=1 && mi<=12) counts[mi-1] += 1;
+    }
+    var names = T('monthNames');
+    var items4 = [];
+    for (var n=0;n<12;n++) { items4.push({label: names[n], value: counts[n], arg: n}); }
+    html += stationDrillVerticalBars(items4, 'var(--navy)', 'drillGoMonthIncidents');
+  } else {
+    html += stationDrillCrumbs();
+    var accsMonth = stationDrillAccsForGpa(_stationDrill.station, _stationDrill.gpa).filter(function(a){
+      if (a.date.slice(-4) !== _stationDrill.year) return false;
+      var parts = (a.date||'').split('.');
+      if (parts.length<2) return false;
+      return (parseInt(parts[1],10)-1) === _stationDrill.month;
+    });
+    html += '<div style="font-weight:600;color:var(--navy);margin:4px 0 10px;">'+T('drillIncidentsFor')+' '+escapeHtml(T('monthNames')[_stationDrill.month])+' '+escapeHtml(_stationDrill.year)+'</div>';
+    for (var p=0;p<accsMonth.length;p++) {
+      var inc = accsMonth[p];
+      html += '<div class="lib-card">';
+      html += '<div class="card-top"><span class="tag act">'+escapeHtml(inc.act)+' &middot; '+escapeHtml(inc.date)+'</span></div>';
+      html += '<h3>'+escapeHtml(inc.name||'')+'</h3>';
+      if (inc.source) {
+        html += '<p><a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">'+T('drillOpenAct')+'</a></p>';
+      } else {
+        html += '<p style="color:var(--text-muted);font-size:13px;">'+T('drillNoAct')+'</p>';
+      }
+      html += '</div>';
+    }
+    if (!accsMonth.length) { html += '<div style="color:var(--text-muted);font-size:13px;">'+T('dashNoData')+'</div>'; }
+  }
+
+  container.innerHTML = html;
+}
+function drillGoStations() { _stationDrill = { station: null, gpa: null, year: null, month: null }; renderStationDrill(); }
+function drillGoGpas(station) { _stationDrill = { station: station, gpa: null, year: null, month: null }; renderStationDrill(); }
+function drillGoYears(gpa) { _stationDrill.gpa = gpa; _stationDrill.year = null; _stationDrill.month = null; renderStationDrill(); }
+function drillGoMonths(year) { if (year !== undefined) _stationDrill.year = year; _stationDrill.month = null; renderStationDrill(); }
+function drillGoMonthIncidents(monthIdx) { _stationDrill.month = parseInt(monthIdx,10); renderStationDrill(); }
+function stationDrillChartHtml(accs) {
+  _stationDrill = { station: null, gpa: null, year: null, month: null };
+  return '<div class="chart-card" id="stationDrillContainer"></div>';
+}
+
 function computeRiskForecast(accs) {
   var now = new Date();
   var allDates = [];
@@ -1597,6 +1739,7 @@ function renderDashboard() {
     '</div>';
   html += yearChartHtml(byYear);
   html += byGpaStationChartHtml(accs);
+  html += stationDrillChartHtml(accs);
   html += chartCardHtml(T('dashTopCat'), byCategory, 'var(--navy)', 8, trCat, 'fCat');
   html += chartCardHtml(T('dashByType'), byType, 'var(--coral)', null, trType, 'fType');
 
@@ -1623,6 +1766,7 @@ function renderDashboard() {
 
   document.getElementById('dashContent').innerHTML = html;
   wireDashClicks(document.getElementById('dashContent'));
+  renderStationDrill();
   _dashRendered = true;
 }
 function goToSearchQuery(queryText) {
