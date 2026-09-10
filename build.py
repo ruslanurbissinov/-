@@ -339,6 +339,8 @@ var I18N = {{
     dashYearChart:'Динамика авто остановов по годам', dashByGpa:'Аварии по агрегатам (ГПА)',
     dashMonthChart:'Динамика авто остановов по месяцам &mdash; ', backToYears:'&larr; Назад к годам',
     clickYearHint:'Нажмите на год, чтобы посмотреть по месяцам',
+    clickMonthDrillHint:'Нажмите на месяц, чтобы посмотреть по КС',
+    dashStationsInMonth:'Остановы по КС &mdash; ', clickStationInMonthHint:'Нажмите на КС, чтобы открыть акты',
     monthNames:['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'],
     dashByStation:'Автоматические остановы по КС &mdash; общее количество',
     clickStationHint:'Нажмите на станцию, чтобы посмотреть агрегаты',
@@ -351,7 +353,7 @@ var I18N = {{
     drillNoAct:'PDF акта расследования не приложен к этой записи.',
     dashTopCat:'Топ повторяющихся причин / категорий', dashByType:'По типу останова', dashNoData:'Нет данных',
     dashMetricsTitle:'&#128200; Метрики эффективности', dashGoal:'Цель системы:',
-    dashGoalText:'снизить долю повторных авто остановов на 40% и сократить время анализа причины с 3&ndash;5 суток (ручной пролистывание архива актов) до 1 рабочего дня за счёт мгновенного поиска похожих случаев по базе.',
+    dashGoalText:'снизить долю повторных авто остановов на 10% и сократить время анализа причины с 3&ndash;5 суток (ручной пролистывание архива актов) до 1 рабочего дня за счёт мгновенного поиска похожих случаев по базе.',
     dashRepeatShare:'Аварий с уже встречавшейся причиной (сейчас, без системы)',
     dashRepeatCats:'Категорий причин, повторявшихся 2+ раза',
     dashRepeatTrend:'Динамика повторяемости причин по годам (% от аварий за год)',
@@ -419,6 +421,8 @@ var I18N = {{
     dashYearChart:'Shutdowns by year', dashByGpa:'Shutdowns by unit (GPU)',
     dashMonthChart:'Shutdowns by month &mdash; ', backToYears:'&larr; Back to years',
     clickYearHint:'Click a year to see the monthly breakdown',
+    clickMonthDrillHint:'Click a month to see the breakdown by station',
+    dashStationsInMonth:'Shutdowns by station &mdash; ', clickStationInMonthHint:'Click a station to open the reports',
     monthNames:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
     dashByStation:'Automatic shutdowns by station &mdash; total count',
     clickStationHint:'Click a station to see its units',
@@ -431,7 +435,7 @@ var I18N = {{
     drillNoAct:'No investigation report PDF is attached to this record.',
     dashTopCat:'Top recurring causes / categories', dashByType:'By shutdown type', dashNoData:'No data',
     dashMetricsTitle:'&#128200; Efficiency metrics', dashGoal:'System goal:',
-    dashGoalText:'reduce the share of repeat emergency shutdowns by 40% and cut root-cause analysis time from 3&ndash;5 days (manually paging through the report archive) to 1 working day via instant search across similar past cases.',
+    dashGoalText:'reduce the share of repeat emergency shutdowns by 10% and cut root-cause analysis time from 3&ndash;5 days (manually paging through the report archive) to 1 working day via instant search across similar past cases.',
     dashRepeatShare:'Shutdowns with an already-seen cause (current baseline, no system)',
     dashRepeatCats:'Cause categories that recurred 2+ times',
     dashRepeatTrend:'Repeat-cause trend by year (% of that year&rsquo;s shutdowns)',
@@ -1343,14 +1347,70 @@ function monthChartHtml(monthData, year) {{
   for (var i=0;i<monthData.length;i++) {{ if (monthData[i].value>maxVal) maxVal = monthData[i].value; }}
   var html = '<h4>'+T('dashMonthChart')+escapeHtml(year)+'</h4>';
   html += '<div class="chart-hint back-link" onclick="showAllYears()">'+T('backToYears')+'</div>';
+  html += '<div class="chart-hint">'+T('clickMonthDrillHint')+'</div>';
   html += '<div class="yearbars">';
   for (var i=0;i<monthData.length;i++) {{
     var h = maxVal>0 ? Math.max(6, Math.round(100*monthData[i].value/maxVal)) : 4;
-    html += '<div class="yearbar-col"><div class="yearbar-val">'+monthData[i].value+'</div>' +
+    html += '<div class="yearbar-col clickable" onclick="showMonthStations(&#39;'+escapeHtml(year)+'&#39;,'+i+')"><div class="yearbar-val">'+monthData[i].value+'</div>' +
       '<div class="yearbar" style="height:'+h+'%;background:var(--teal);"></div>' +
       '<div class="yearbar-lbl">'+escapeHtml(monthData[i].label)+'</div></div>';
   }}
   html += '</div>';
+  return html;
+}}
+function computeStationsForMonth(accs, year, monthIdx) {{
+  var filtered = accs.filter(function(a) {{
+    if ((a.date||'').slice(-4) !== year) return false;
+    var parts = (a.date||'').split('.');
+    if (parts.length < 2) return false;
+    return (parseInt(parts[1],10)-1) === monthIdx;
+  }});
+  return {{ filtered: filtered, byStation: countBy(filtered, function(inc){{ return inc.station || '\\u2014'; }}) }};
+}}
+function stationsForMonthHtml(year, monthIdx) {{
+  var monthLabel = T('monthNames')[monthIdx];
+  var res = computeStationsForMonth(_dashAccs, year, monthIdx);
+  var byStation = res.byStation;
+  var maxVal = 0;
+  for (var i=0;i<byStation.length;i++) {{ if (byStation[i].value>maxVal) maxVal = byStation[i].value; }}
+  var html = '<h4>'+T('dashStationsInMonth')+escapeHtml(monthLabel)+' '+escapeHtml(year)+'</h4>';
+  html += '<div class="chart-hint back-link" onclick="showYearMonths(&#39;'+escapeHtml(year)+'&#39;)">'+T('backToStationMonths')+' &middot; '+escapeHtml(year)+'</div>';
+  if (!byStation.length) {{
+    html += '<div style="color:var(--text-muted);font-size:13px;">'+T('dashNoData')+'</div>';
+    return html;
+  }}
+  html += '<div class="chart-hint">'+T('clickStationInMonthHint')+'</div>';
+  html += '<div class="yearbars">';
+  for (var j=0;j<byStation.length;j++) {{
+    var h = maxVal>0 ? Math.max(6, Math.round(100*byStation[j].value/maxVal)) : 4;
+    html += '<div class="yearbar-col clickable" onclick="showStationActsForMonth(&#39;'+escapeHtml(year)+'&#39;,'+monthIdx+',&#39;'+escapeHtml(byStation[j].label)+'&#39;)"><div class="yearbar-val">'+byStation[j].value+'</div>' +
+      '<div class="yearbar" style="height:'+h+'%;background:var(--navy);"></div>' +
+      '<div class="yearbar-lbl">'+escapeHtml(trStation(byStation[j].label))+'</div></div>';
+  }}
+  html += '</div>';
+  return html;
+}}
+function stationActsForMonthHtml(year, monthIdx, station) {{
+  var monthLabel = T('monthNames')[monthIdx];
+  var res = computeStationsForMonth(_dashAccs, year, monthIdx);
+  var accsSt = res.filtered.filter(function(a) {{ return (a.station||'') === station; }});
+  var html = '<h4>'+T('dashStationsInMonth')+escapeHtml(monthLabel)+' '+escapeHtml(year)+' &middot; '+escapeHtml(trStation(station))+'</h4>';
+  html += '<div class="chart-hint back-link" onclick="showMonthStations(&#39;'+escapeHtml(year)+'&#39;,'+monthIdx+')">'+T('backToStations')+'</div>';
+  for (var i=0;i<accsSt.length;i++) {{
+    var inc = accsSt[i];
+    html += '<div class="lib-card">';
+    html += '<div class="card-top"><span class="tag act">'+escapeHtml(inc.act)+' &middot; '+escapeHtml(inc.date)+'</span>';
+    if (inc.gpa && inc.gpa.length) {{ html += '<span class="tag equip">'+escapeHtml(trGpa(inc.gpa[0]))+'</span>'; }}
+    html += '</div>';
+    html += '<h3>'+escapeHtml(inc.name||'')+'</h3>';
+    if (inc.source) {{
+      html += '<p><a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">'+T('drillOpenAct')+'</a></p>';
+    }} else {{
+      html += '<p style="color:var(--text-muted);font-size:13px;">'+T('drillNoAct')+'</p>';
+    }}
+    html += '</div>';
+  }}
+  if (!accsSt.length) {{ html += '<div style="color:var(--text-muted);font-size:13px;">'+T('dashNoData')+'</div>'; }}
   return html;
 }}
 function showYearMonths(year) {{
@@ -1358,6 +1418,16 @@ function showYearMonths(year) {{
   if (!container) return;
   var monthData = computeMonthlyForYear(_dashAccs, year);
   container.innerHTML = monthChartHtml(monthData, year);
+}}
+function showMonthStations(year, monthIdx) {{
+  var container = document.getElementById('yearChartContainer');
+  if (!container) return;
+  container.innerHTML = stationsForMonthHtml(year, parseInt(monthIdx,10));
+}}
+function showStationActsForMonth(year, monthIdx, station) {{
+  var container = document.getElementById('yearChartContainer');
+  if (!container) return;
+  container.innerHTML = stationActsForMonthHtml(year, parseInt(monthIdx,10), station);
 }}
 function showAllYears() {{
   var container = document.getElementById('yearChartContainer');
