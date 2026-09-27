@@ -26,6 +26,7 @@ BASE_DIR = Path(__file__).parent
 DATA_FILE = BASE_DIR / 'accidents.json'
 DEFECTS_FILE = BASE_DIR / 'defects.json'
 LIBRARY_FILE = BASE_DIR / 'library.json'
+MODELS_FILE = BASE_DIR / 'equipment_models.json'
 XLSX_OUT = BASE_DIR / 'База_аварийных_остановов_ГПА.xlsx'
 HTML_OUT = BASE_DIR / 'Поиск_по_базе_аварий.html'
 
@@ -93,6 +94,12 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
   .tag.gpa{{background:var(--teal-bg);color:var(--teal);}}
   .tag.cat{{background:var(--amber-bg);color:var(--amber);}}
   .tag.type{{background:var(--coral-bg);color:var(--coral);}}
+  .tag.status-investigation{{background:#FFF6D9;color:#8A6A1F;border:1px solid #F0D98C;}}
+  .tag.status-closed{{background:#EDF1F5;color:#5A6B7D;}}
+  .tag.risk-high{{background:#FDE3E1;color:#B3261E;}}
+  .tag.risk-medium{{background:var(--amber-bg);color:var(--amber);}}
+  .tag.risk-low{{background:#DCFCE7;color:#166534;}}
+  .card.status-investigation{{border-left:4px solid #F0D98C;}}
   .card h3{{margin:0 0 6px;font-size:15.5px;font-weight:600;color:var(--text);}}
   .card .cause{{font-size:13.5px;color:var(--text-muted);margin:0 0 8px;}}
   mark{{background:#FFE9A8;color:#412402;padding:0 2px;border-radius:2px;}}
@@ -234,6 +241,7 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
     <span class="left" id="count"></span>
     <span class="right" id="sortLabel">Сортировка по релевантности</span>
   </div>
+  <div class="src-note" id="statusLegend" style="text-align:left;margin:0 0 10px;"></div>
   <div id="recBlock"></div>
   <div id="results"><div class="loading">Загрузка данных...</div></div>
   <div class="src-note" id="srcNote">Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория)</div>
@@ -262,6 +270,13 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
 <script>
 var incidents = [];
 var library = [];
+var MODELS = {{}};
+function getModelFor(station, gpa) {{
+  if (!station || !gpa) return null;
+  var byStation = MODELS[station];
+  if (!byStation) return null;
+  return byStation[gpa] || null;
+}}
 var LANG = 'ru';
 var BUILD_STAMP = '';
 function FS(ru, en) {{ return LANG==='en' ? en : ru; }}
@@ -295,6 +310,7 @@ var I18N = {{
     libSearchPlaceholder:'Например: MOOG DS2000XP, ABB, руководство по эксплуатации...',
     libAllCat:'Все категории', libAllEquip:'Всё оборудование', libReset:'Сбросить',
     libCategoryManual:'Руководство по эксплуатации', libCategoryBulletin:'Сервисный бюллетень', libCategoryLetter:'Рекомендательное письмо', libCategoryOther:'Прочее',
+    libCategoryTechReport:'Технический отчёт по ТО', libCategoryVideo:'Видео-инструкция', libCategoryProdInstruction:'Производственная инструкция (ПИ)', libCategoryIPR:'ИПР',
     libDocsFound:'Найдено документов:', libOpenDoc:'Открыть документ', libDate:'Дата:', libIssuer:'Источник:',
     libEmptyTitle:'Библиотека пока пуста', libEmptyBody:'Загрузите руководства по эксплуатации, сервисные бюллетени и рекомендательные письма — они появятся здесь и будут учитываться в рекомендациях AI-анализа при расследовании похожих случаев.',
     libSrcNote:'Документы библиотеки (руководства по эксплуатации, сервисные бюллетени, рекомендательные письма) &middot; библиотека загружается из library.json, файлы — в репозитории',
@@ -307,7 +323,16 @@ var I18N = {{
     circumstances:'Обстоятельства, при которых произошел останов:',
     showDetails:'Показать меры и заключение &#9662;', hideDetails:'Скрыть детали &#9652;',
     conclusion:'Заключение:', measuresTaken:'Принятые меры (немедленные):',
-    tabInvestigation:'Акт расследования', tabWorkOrder:'Акт выполненных работ', tabVenting:'Объём газа',
+    tabInvestigation:'Акт расследования', tabWorkOrder:'Акт выполненных работ', tabVenting:'Объём газа', tabReports:'Донесения',
+    statusInvestigation:'На стадии расследования', statusClosed:'Расследование завершено',
+    statusLegend:'Цвет карточки: <span class="tag status-investigation" style="margin:0 4px;">жёлтый</span> — случай на стадии расследования, статус ещё не закрыт.',
+    noReports:'Донесения по этому случаю пока не загружены.',
+    reportsAutoDigitizeNote:'Загруженные файлы донесений (PDF/Word) сохраняются как приложение к карточке. Автоматическая «цифровка» — распознавание текста и заполнение полей ИИ без участия человека — требует серверного OCR/ИИ-сервиса и в текущей статической архитектуре платформы не реализована; это отдельная задача для бэкенда (см. ТЗ).',
+    openReportFile:'Открыть файл донесения',
+    modelLabel:'Модель агрегата:', modelUnknown:'не указана — требуется уточнить у эксплуатирующей КС',
+    reserveDowntimeLabel:'Время простоя вне резерва:', reserveDowntimeNote:'Данные по этому показателю пока не внесены — заполняются по мере уточнения по каждому акту.',
+    cardRiskLabel:'Риск повторного останова агрегата', riskBadgeLabel:'Риск:', riskReductionLabel:'Вероятность снижения риска повторного останова при выполнении мероприятий:',
+    riskReductionHigh:'Высокая (меры выполнены и оформлены)', riskReductionMedium:'Средняя (меры намечены, требуют контроля выполнения)', riskReductionLow:'Низкая (конкретные корректирующие меры по этому случаю не определены)',
     workDescription:'Выполненные работы:', materialsUsed:'Использованные материалы:',
     partNumber:'парт-номер', workDate:'Дата выполнения:', workStatus:'Статус:',
     materialsNoData:'Часть данных не указана в первичном акте.',
@@ -377,6 +402,7 @@ var I18N = {{
     libSearchPlaceholder:'e.g.: MOOG DS2000XP, ABB, operation manual...',
     libAllCat:'All categories', libAllEquip:'All equipment', libReset:'Reset',
     libCategoryManual:'Operation manual', libCategoryBulletin:'Service bulletin', libCategoryLetter:'Advisory letter', libCategoryOther:'Other',
+    libCategoryTechReport:'Maintenance technical report', libCategoryVideo:'Video instruction', libCategoryProdInstruction:'Production instruction', libCategoryIPR:'Work-permit instruction (ИПР)',
     libDocsFound:'Documents found:', libOpenDoc:'Open document', libDate:'Date:', libIssuer:'Issued by:',
     libEmptyTitle:'The library is empty', libEmptyBody:'Upload operation manuals, service bulletins, and advisory letters — they will appear here and will be used in the AI-analysis recommendations for similar cases.',
     libSrcNote:'Library documents (operation manuals, service bulletins, advisory letters) &middot; loaded from library.json, files are stored in the repository',
@@ -389,7 +415,16 @@ var I18N = {{
     circumstances:'Circumstances of the shutdown:',
     showDetails:'Show measures &amp; conclusion &#9662;', hideDetails:'Hide details &#9652;',
     conclusion:'Conclusion:', measuresTaken:'Immediate measures taken:',
-    tabInvestigation:'Investigation report', tabWorkOrder:'Completion report', tabVenting:'Gas volume',
+    tabInvestigation:'Investigation report', tabWorkOrder:'Completion report', tabVenting:'Gas volume', tabReports:'Reports',
+    statusInvestigation:'Under investigation', statusClosed:'Investigation closed',
+    statusLegend:'Card color: <span class="tag status-investigation" style="margin:0 4px;">yellow</span> — case is under investigation, status not yet closed.',
+    noReports:'No report files have been uploaded for this case yet.',
+    reportsAutoDigitizeNote:'Uploaded report files (PDF/Word) are stored as attachments to the card. Fully automatic "digitization" — OCR/AI extraction of fields without human review — requires a server-side OCR/AI service and is not implemented in the current static-site architecture; it is a separate backend task (see the technical specification).',
+    openReportFile:'Open report file',
+    modelLabel:'Unit model:', modelUnknown:'not specified — check with the operating station',
+    reserveDowntimeLabel:'Downtime outside reserve:', reserveDowntimeNote:'This metric has not been entered yet for this case — it will be filled in as each report is clarified.',
+    cardRiskLabel:'Repeat-shutdown risk for this unit', riskBadgeLabel:'Risk:', riskReductionLabel:'Probability of reducing repeat-shutdown risk once the measures are carried out:',
+    riskReductionHigh:'High (measures completed and documented)', riskReductionMedium:'Medium (measures planned, completion needs follow-up)', riskReductionLow:'Low (no specific corrective measures defined for this case)',
     workDescription:'Work performed:', materialsUsed:'Materials used:',
     partNumber:'part no.', workDate:'Completion date:', workStatus:'Status:',
     materialsNoData:'Some details are not specified in the source report.',
@@ -493,15 +528,20 @@ function fillSelect(id, values) {{
   }}
 }}
 
+var LIB_CATEGORIES = ['Руководство по эксплуатации','Сервисный бюллетень','Технический отчёт по ТО','Видео-инструкция','Производственная инструкция (ПИ)','ИПР','Рекомендательное письмо'];
 function trLibCat(v) {{
   if (v === 'Руководство по эксплуатации') return T('libCategoryManual');
   if (v === 'Сервисный бюллетень') return T('libCategoryBulletin');
+  if (v === 'Технический отчёт по ТО') return T('libCategoryTechReport');
+  if (v === 'Видео-инструкция') return T('libCategoryVideo');
+  if (v === 'Производственная инструкция (ПИ)') return T('libCategoryProdInstruction');
+  if (v === 'ИПР') return T('libCategoryIPR');
   if (v === 'Рекомендательное письмо') return T('libCategoryLetter');
   return T('libCategoryOther');
 }}
 
 function initLibFilters() {{
-  var allCat=[], allEquip=[];
+  var allCat=LIB_CATEGORIES.slice(), allEquip=[];
   for (var i=0;i<library.length;i++) {{
     if (library[i].category) allCat.push(library[i].category);
     if (library[i].equipment) allEquip.push(library[i].equipment);
@@ -671,9 +711,34 @@ function highlight(text, tokens) {{
   return safe;
 }}
 
+var _riskMapCache = null;
+function getRiskMap() {{
+  if (_riskMapCache) return _riskMapCache;
+  var accs = [];
+  for (var i=0;i<incidents.length;i++) {{ if (incidents[i].kind==='incident') accs.push(incidents[i]); }}
+  var map = {{}};
+  if (accs.length) {{
+    var fc = computeRiskForecast(accs);
+    for (var j=0;j<fc.items.length;j++) {{
+      var it = fc.items[j];
+      map[it.gpa+'\u0001'+(it.station||'')] = it;
+    }}
+  }}
+  _riskMapCache = map;
+  return map;
+}}
+function incidentRiskItems(inc) {{
+  var map = getRiskMap(), out = [];
+  for (var g=0; g<(inc.gpa||[]).length; g++) {{
+    var it = map[inc.gpa[g]+'\u0001'+(inc.station||'')];
+    if (it) out.push(it);
+  }}
+  return out;
+}}
 function buildCard(inc, tokens, scoreBadge) {{
   var card = document.createElement('div');
-  card.className = 'card';
+  var isInvestigation = inc.status === 'investigation';
+  card.className = 'card' + (isInvestigation ? ' status-investigation' : '');
   var gpaTags = '';
   for (var g=0;g<inc.gpa.length;g++) {{ gpaTags += '<span class="tag gpa">'+escapeHtml(trGpa(inc.gpa[g]))+'</span>'; }}
   var htmlStr = '';
@@ -684,7 +749,19 @@ function buildCard(inc, tokens, scoreBadge) {{
   htmlStr += gpaTags;
   htmlStr += '<span class="tag cat">'+escapeHtml(trCat(inc.category))+'</span>';
   htmlStr += '<span class="tag type">'+escapeHtml(trType(inc.type))+'</span>';
+  if (inc.kind==='incident') {{
+    htmlStr += '<span class="tag '+(isInvestigation?'status-investigation':'status-closed')+'">'+(isInvestigation?T('statusInvestigation'):T('statusClosed'))+'</span>';
+  }}
   if (scoreBadge) {{ htmlStr += '<span class="tag match">'+escapeHtml(scoreBadge)+'</span>'; }}
+  if (inc.kind==='incident') {{
+    var riskItems = incidentRiskItems(inc);
+    if (riskItems.length) {{
+      var maxRisk = riskItems.reduce(function(a,b){{ return b.score>a.score?b:a; }});
+      var lvl = riskLevel(maxRisk.score);
+      var riskCls = maxRisk.score>=60?'risk-high':(maxRisk.score>=35?'risk-medium':'risk-low');
+      htmlStr += '<span class="tag '+riskCls+'" title="'+escapeHtml(T('cardRiskLabel'))+'">'+T('riskBadgeLabel')+' '+lvl.text+'</span>';
+    }}
+  }}
   htmlStr += '</div>';
   htmlStr += '<h3>'+highlight(inc.name, tokens)+'</h3>';
   htmlStr += '<p class="cause"><b>'+T('circumstances')+'</b> '+highlight(inc.cause, tokens)+'</p>';
@@ -709,6 +786,7 @@ function buildCard(inc, tokens, scoreBadge) {{
   htmlStr += '<button class="subtab-btn active" type="button" data-tab="inv">'+T('tabInvestigation')+'</button>';
   htmlStr += '<button class="subtab-btn" type="button" data-tab="work">'+T('tabWorkOrder')+'</button>';
   htmlStr += '<button class="subtab-btn" type="button" data-tab="vent">'+T('tabVenting')+'</button>';
+  htmlStr += '<button class="subtab-btn" type="button" data-tab="reports">'+T('tabReports')+'</button>';
   htmlStr += '</div>';
 
   // --- Investigation pane ---
@@ -723,6 +801,17 @@ function buildCard(inc, tokens, scoreBadge) {{
   }}
   if (inc.damaged && inc.damaged !== 'Отсутствуют' && inc.damaged !== 'Отсутствует' && inc.damaged !== 'Не обнаружено') {{
     htmlStr += '<p><b>'+T('damagedEquip')+'</b> '+highlight(inc.damaged, tokens)+'</p>';
+  }}
+  var modelVal = getModelFor(inc.station, (inc.gpa||[])[0]);
+  htmlStr += '<p><b>'+T('modelLabel')+'</b> '+(modelVal ? escapeHtml(modelVal) : '<i style="color:var(--text-muted);">'+T('modelUnknown')+'</i>')+'</p>';
+  if (inc.reserve_downtime_min !== undefined && inc.reserve_downtime_min !== null) {{
+    htmlStr += '<p><b>'+T('reserveDowntimeLabel')+'</b> '+formatDuration(inc.reserve_downtime_min)+'</p>';
+  }} else {{
+    htmlStr += '<p><b>'+T('reserveDowntimeLabel')+'</b> <i style="color:var(--text-muted);">'+T('reserveDowntimeNote')+'</i></p>';
+  }}
+  if (inc.kind==='incident') {{
+    var reduction = (inc.remediation && inc.remediation.length) ? 'riskReductionHigh' : (inc.recommendation ? 'riskReductionMedium' : 'riskReductionLow');
+    htmlStr += '<p><b>'+T('riskReductionLabel')+'</b> '+T(reduction)+'</p>';
   }}
   var invDocs = [];
   if (inc.source) {{ invDocs.push('<a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">'+T('openInvestigationAct')+'</a>'); }}
@@ -781,6 +870,20 @@ function buildCard(inc, tokens, scoreBadge) {{
       htmlStr += '<p><b>'+T('ventedSource')+'</b> <a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">'+T('openVentingAct')+'</a></p>';
     }}
   }}
+  htmlStr += '</div>';
+
+  // --- Reports pane (донесения: pdf/word и т.п., приложенные к случаю) ---
+  htmlStr += '<div class="subtab-pane" data-pane="reports" style="display:none;">';
+  var reportFiles = inc.report_files || [];
+  if (!reportFiles.length) {{
+    htmlStr += '<p style="color:var(--text-muted);">'+T('noReports')+'</p>';
+  }} else {{
+    for (var rf=0; rf<reportFiles.length; rf++) {{
+      var rep = reportFiles[rf];
+      htmlStr += '<p><a class="doc-link" href="'+encodeURIComponent(rep.file)+'" target="_blank">'+escapeHtml(rep.title || T('openReportFile'))+'</a></p>';
+    }}
+  }}
+  htmlStr += '<p style="font-size:12px;color:var(--text-muted);margin-top:10px;">'+T('reportsAutoDigitizeNote')+'</p>';
   htmlStr += '</div>';
 
   htmlStr += '</div>';
@@ -1254,6 +1357,7 @@ function applyLanguage() {{
   document.getElementById('uploadLabel').innerHTML = T('uploadLabel');
   document.getElementById('sortLabel').textContent = T('sortRelevance');
   document.getElementById('srcNote').innerHTML = T('srcNote') + (BUILD_STAMP ? ' &middot; ' + (LANG==='ru'?'сборка':'build') + ': ' + BUILD_STAMP : '');
+  document.getElementById('statusLegend').innerHTML = T('statusLegend');
   document.getElementById('langToggle').textContent = LANG==='ru' ? 'EN' : 'RU';
   document.getElementById('langToggle2').textContent = LANG==='ru' ? 'EN' : 'RU';
   document.documentElement.lang = LANG;
@@ -1949,7 +2053,9 @@ Promise.all([
       downtime_min: (typeof a.downtime_min === 'number' ? a.downtime_min : undefined),
       station: a.station||'', report_source: a.report_source||'',
       remediation:a.remediation||[], source:a.source, defect_source:a.defect_source, tags:a.tags||[],
-      venting: a.venting || null
+      venting: a.venting || null, status: a.status || 'closed',
+      reserve_downtime_min: (typeof a.reserve_downtime_min === 'number' ? a.reserve_downtime_min : undefined),
+      report_files: a.report_files || []
     }});
   }}
   for (var j=0;j<defects.length;j++) {{
@@ -2007,6 +2113,11 @@ def build_web_site(incidents, defects, library, out_dir):
         "var BUILD_STAMP = '';",
         "var BUILD_STAMP = '" + build_stamp + "';"
     )
+    models_data = load_equipment_models()
+    fixed_html = fixed_html.replace(
+        "var MODELS = {};",
+        "var MODELS = " + json.dumps(models_data, ensure_ascii=False) + ";"
+    )
     with open(out_dir / 'index.html', 'w', encoding='utf-8') as f:
         f.write(fixed_html)
 
@@ -2035,6 +2146,17 @@ def load_library():
     if not LIBRARY_FILE.exists():
         return []
     with open(LIBRARY_FILE, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def load_equipment_models():
+    """Справочник «станция -> ГПА -> модель агрегата». Заполняется вручную по мере
+    уточнения у эксплуатирующих КС (реальных моделей агрегатов в исходных актах нет,
+    поэтому здесь не выдумываются значения — только структура для последующего
+    заполнения). Ключи должны точно совпадать с полями station/gpa в accidents.json."""
+    if not MODELS_FILE.exists():
+        return {}
+    with open(MODELS_FILE, encoding='utf-8') as f:
         return json.load(f)
 
 
@@ -2095,7 +2217,10 @@ def header_cell(cell, text, size=12, fill='FF1A365D', color='FFFFFFFF'):
     cell.border = BORDER
 
 
-def build_xlsx(incidents, defects):
+def build_xlsx(incidents, defects, models=None):
+    models = models or {}
+    def model_for(station, gpa):
+        return (models.get(station) or {}).get(gpa) or '—'
     wb = openpyxl.Workbook()
 
     # ---- Лист 1: База_данных ----
@@ -2142,10 +2267,10 @@ def build_xlsx(incidents, defects):
 
     # ---- Лист 2: Таблица_аварий ----
     ws2 = wb.create_sheet('Таблица_аварий')
-    ws2.merge_cells('A1:G1')
+    ws2.merge_cells('A1:I1')
     header_cell(ws2['A1'], 'ТАБЛИЦА АВАРИЙНЫХ ОСТАНОВОВ ГПА', size=14)
     ws2.row_dimensions[1].height = 28
-    headers2 = ['№', 'Наименование (тема аварии)', 'Дата', '№ акта', 'ГПА', 'Источник', 'Стр. в PDF']
+    headers2 = ['№', 'Наименование (тема аварии)', 'Дата', '№ акта', 'КС', 'ГПА', 'Модель агрегата', 'Источник', 'Стр. в PDF']
     for i, h in enumerate(headers2, start=1):
         header_cell(ws2.cell(row=3, column=i), h, size=11, fill=GREY, color='FF2D3748')
 
@@ -2161,22 +2286,36 @@ def build_xlsx(incidents, defects):
 
     r = 4
     for i, inc in enumerate(incidents, start=1):
+        station = inc.get('station', '')
+        gpa_label = ', '.join(inc['gpa'])
+        model_label = ', '.join(sorted(set(model_for(station, g) for g in inc['gpa'])))
         ws2.cell(row=r, column=1, value=i).font = Font(name=FONT, size=11)
         ws2.cell(row=r, column=2, value=inc['name']).font = Font(name=FONT, size=11)
         ws2.cell(row=r, column=3, value=inc['date']).font = Font(name=FONT, size=11)
         ws2.cell(row=r, column=4, value=inc['act']).font = Font(name=FONT, size=11)
-        ws2.cell(row=r, column=5, value=', '.join(inc['gpa'])).font = Font(name=FONT, size=11)
-        link_cell = ws2.cell(row=r, column=6, value='Открыть акт (PDF)')
+        ws2.cell(row=r, column=5, value=station).font = Font(name=FONT, size=11)
+        ws2.cell(row=r, column=6, value=gpa_label).font = Font(name=FONT, size=11)
+        ws2.cell(row=r, column=7, value=model_label).font = Font(name=FONT, size=11, italic=(model_label == '—'), color='FF9AA5B1' if model_label == '—' else 'FF1A2733')
+        link_cell = ws2.cell(row=r, column=8, value='Открыть акт (PDF)')
         link_cell.hyperlink = 'Все_акты_расследований.pdf'
         link_cell.font = Font(name=FONT, size=11, color='FF1155CC', underline='single')
-        ws2.cell(row=r, column=7, value=page_map.get(inc['source'], '')).font = Font(name=FONT, size=11, bold=True)
-        for c in range(1, 8):
+        ws2.cell(row=r, column=9, value=page_map.get(inc['source'], '')).font = Font(name=FONT, size=11, bold=True)
+        for c in range(1, 10):
             ws2.cell(row=r, column=c).border = BORDER
             ws2.cell(row=r, column=c).alignment = Alignment(vertical='center', wrap_text=True)
         ws2.row_dimensions[r].height = 32
         r += 1
 
-    widths2 = [6, 46, 12, 10, 16, 16, 11]
+    note2_row = r + 1
+    ws2.merge_cells(f'A{note2_row}:I{note2_row}')
+    note2 = ws2.cell(row=note2_row, column=1)
+    note2.value = ('«Модель агрегата» подтягивается из equipment_models.json (справочник станция -> ГПА -> модель). '
+                   'Заполните этот файл реальными моделями и пересоберите платформу — прочерк означает, что модель ещё не внесена.')
+    note2.font = Font(name=FONT, size=9, italic=True, color='FFC0392B')
+    note2.alignment = Alignment(wrap_text=True, vertical='top')
+    ws2.row_dimensions[note2_row].height = 28
+
+    widths2 = [6, 42, 12, 10, 18, 14, 20, 16, 11]
     for i, w in enumerate(widths2, start=1):
         ws2.column_dimensions[get_column_letter(i)].width = w
     ws2.sheet_view.showGridLines = False
@@ -2777,7 +2916,8 @@ if __name__ == '__main__':
     incidents = load_data()
     defects = load_defects()
     library = load_library()
-    last_row = build_xlsx(incidents, defects)
+    models = load_equipment_models()
+    last_row = build_xlsx(incidents, defects, models)
     build_html(incidents, defects)
     build_web_site(incidents, defects, library, BASE_DIR / 'site')
     print(f'Готово: {len(incidents)} аварий, {len(defects)} отдельных дефектов, '
