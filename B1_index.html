@@ -24,19 +24,22 @@
   .lang-btn:hover{background:rgba(255,255,255,0.18);}
   .lang-btn-toolbar{background:var(--surface);color:var(--navy);border:1px solid var(--border);}
   .lang-btn-toolbar:hover{background:#EDF1F5;}
-  .container{max-width:960px;margin:0 auto;padding:20px 20px 60px;}
+  .container{max-width:1360px;margin:0 auto;padding:20px 20px 60px;}
   .toolbar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin:-18px 0 20px;box-shadow:0 2px 10px rgba(15,36,64,0.08);}
   .search-row{display:flex;gap:10px;margin-bottom:12px;}
   .search-row input{flex:1;padding:11px 14px;font-size:14px;border:1px solid var(--border);border-radius:8px;outline:none;font-family:var(--sans);}
+  .search-row button{flex:0 0 auto;padding:8px 14px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text-muted);cursor:pointer;}
+  .search-row button:hover{background:#EDF1F5;}
   .search-row input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(26,54,93,0.12);}
   .filters{display:flex;gap:10px;flex-wrap:wrap;}
   .filters select{padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--text);font-family:var(--sans);}
   .filters button{padding:8px 14px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text-muted);cursor:pointer;}
   .filters button:hover{background:#EDF1F5;}
   .filters-secondary{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);align-items:center;}
-  .reg-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
-  .reg-table thead th{text-align:left;background:#F1F4F8;color:#5A6B7D;font-size:11.5px;text-transform:uppercase;letter-spacing:0.3px;padding:10px 12px;border-bottom:1px solid var(--border);}
-  .reg-table tbody td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+  .reg-table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;table-layout:auto;}
+  .reg-table thead th{text-align:left;background:#F1F4F8;color:#5A6B7D;font-size:10.5px;text-transform:uppercase;letter-spacing:0.3px;padding:8px 9px;border:1px solid var(--border);white-space:nowrap;}
+  .reg-table tbody td{padding:9px 9px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);vertical-align:top;}
+  .reg-table tbody td:last-child{border-right:none;}
   .reg-row-main{cursor:pointer;}
   .reg-row-main:hover{background:#F7F9FB;}
   .reg-row-main.expanded{background:#EDF1F5;}
@@ -184,8 +187,10 @@
   <div class="toolbar">
     <div class="search-row">
       <input id="q" type="text" placeholder="Например: свечной кран, потеря пламени, RB6-2, ГПА№2..." autocomplete="off" disabled>
+      <button id="reset" type="button" disabled>Сбросить</button>
+      <button id="langToggle2" type="button" class="lang-btn lang-btn-toolbar">EN</button>
     </div>
-    <div class="filters">
+    <div class="filters" style="display:none;">
       <select id="fStation" disabled><option value="" id="fStationAll">Все станции</option></select>
       <select id="fCat" disabled><option value="" id="fCatAll">Все категории</option></select>
       <select id="fGpa" disabled><option value="" id="fGpaAll">Все ГПА</option></select>
@@ -194,8 +199,6 @@
       <select id="fEquip" disabled><option value="" id="fEquipAll">Всё оборудование</option></select>
     </div>
     <div class="filters filters-secondary">
-      <button id="reset" type="button" disabled>Сбросить</button>
-      <button id="langToggle2" type="button" class="lang-btn lang-btn-toolbar">EN</button>
       <label class="file-btn" for="reportFile" id="uploadLabel">&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)</label>
       <input id="reportFile" type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" style="display:none;">
       <span id="fileStatus"></span>
@@ -240,8 +243,12 @@ function getModelFor(station, gpa) {
   if (!byStation) return null;
   return byStation[gpa] || null;
 }
+var ORG = {"_comment": "Компания и филиал по каждой станции. Компания взята из уставных/паспортных документов проекта; филиал не указан в актах и не выдуман — заполните точным названием филиала/УМГ и пересоберите build.py.", "КС-1 «Алимтау»": {"company": "АО «НК «QazaqGaz»", "filial": null}, "КС-2 «Кереит»": {"company": "АО «НК «QazaqGaz»", "filial": null}, "СКС-2 «Аксу»": {"company": "АО «НК «QazaqGaz»", "filial": null}};
+function getOrgFor(station) {
+  return ORG[station] || {};
+}
 var LANG = 'ru';
-var BUILD_STAMP = '2026-09-28 10:19';
+var BUILD_STAMP = '2026-09-28 10:45';
 function FS(ru, en) { return LANG==='en' ? en : ru; }
 var CAT_EN = {
   'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
@@ -281,6 +288,9 @@ var I18N = {
     searchPlaceholder:'Например: свечной кран, потеря пламени, RB6-2, ГПА№2...',
     allGpa:'Все ГПА', allCat:'Все категории', allYear:'Все годы', reset:'Сбросить', allStation:'Все станции', allEquip:'Всё оборудование', allType:'Любой тип',
     regColAct:'Акт / Дата', regColStation:'Станция / агрегат', regColCat:'Категория причины', regColType:'Тип', regColCase:'Случай', regColStatus:'Статус', regColRisk:'Риск',
+    regColCompany:'Компания', regColFilial:'Филиал', regColKs:'КС', regColGpaGroup:'ГПА', regColModel:'Модель', regColNumber:'Нумерация',
+    regColDateTime:'Дата/Время', regColStopType:'Вид остановки', regColCause:'Причина остановки', regColFix:'Мероприятия по устранению',
+    regColStopCat:'Категория остановки', regColAuthor:'Автор', notSpecified:'&mdash;',
     uploadLabel:'&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)',
     sortRelevance:'Сортировка по релевантности', loading:'Загрузка данных...',
     srcNote:'Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория)',
@@ -374,6 +384,9 @@ var I18N = {
     searchPlaceholder:'e.g.: ignition valve, flame loss, RB6-2, GPU#2...',
     allGpa:'All units', allCat:'All categories', allYear:'All years', reset:'Reset', allStation:'All stations', allEquip:'All equipment', allType:'Any type',
     regColAct:'Report / Date', regColStation:'Station / unit', regColCat:'Cause category', regColType:'Type', regColCase:'Case', regColStatus:'Status', regColRisk:'Risk',
+    regColCompany:'Company', regColFilial:'Branch', regColKs:'Station', regColGpaGroup:'Unit', regColModel:'Model', regColNumber:'No.',
+    regColDateTime:'Date/Time', regColStopType:'Shutdown type', regColCause:'Cause', regColFix:'Corrective measures',
+    regColStopCat:'Shutdown category', regColAuthor:'Author', notSpecified:'&mdash;',
     uploadLabel:'&#128206; Upload incident report (PDF, Word, TXT, photo)',
     sortRelevance:'Sorted by relevance', loading:'Loading data...',
     srcNote:'Data loaded from accidents.json + defects.json &middot; reports are stored in the repository root',
@@ -886,21 +899,40 @@ function buildRow(inc, tokens, scoreBadge) {
       riskBadge = '<span class="tag '+riskCls+'">'+lvl.text+'</span>';
     }
   }
-  var gpaStr = (inc.gpa||[]).map(function(g){ return trGpa(g); }).join(', ');
-  var caseCell = highlight(inc.name, tokens) + (scoreBadge ? '<br><span class="tag match" style="margin-top:4px;display:inline-block;">'+escapeHtml(scoreBadge)+'</span>' : '');
+  var org = getOrgFor(inc.station);
+  var companyCell = org.company ? escapeHtml(org.company) : '<i style="color:var(--text-muted);">'+T('notSpecified')+'</i>';
+  var filialCell = org.filial ? escapeHtml(org.filial) : '<i style="color:var(--text-muted);">'+T('notSpecified')+'</i>';
+  var gpaList = inc.gpa || [];
+  var modelStr = uniqueSorted(gpaList.map(function(g){ return getModelFor(inc.station, g) || ''; }).filter(function(x){ return x; })).join(', ') || '<i style="color:var(--text-muted);">'+T('notSpecified')+'</i>';
+  var numberStr = gpaList.map(function(g){ return trGpa(g); }).join(', ') || '—';
+  var fixParts = [];
+  if (inc.remediation && inc.remediation.length) {
+    for (var wi=0; wi<inc.remediation.length; wi++) { if (inc.remediation[wi].work_description) fixParts.push(inc.remediation[wi].work_description); }
+  }
+  if (!fixParts.length && inc.recommendation) { fixParts.push(inc.recommendation); }
+  if (!fixParts.length && inc.measures) { fixParts.push(inc.measures); }
+  var fixText = fixParts.length ? highlight(fixParts.join(' · '), tokens) : '—';
+  var authorCell = inc.author ? escapeHtml(inc.author) : '<i style="color:var(--text-muted);">'+T('notSpecified')+'</i>';
+  var caseTitle = highlight(inc.name, tokens) + (scoreBadge ? '<br><span class="tag match" style="margin-top:4px;display:inline-block;">'+escapeHtml(scoreBadge)+'</span>' : '');
   tr.innerHTML =
+    '<td>'+companyCell+'</td>' +
+    '<td>'+filialCell+'</td>' +
+    '<td>'+escapeHtml(trStation(inc.station||'—'))+'</td>' +
+    '<td>'+modelStr+'</td>' +
+    '<td>'+escapeHtml(numberStr)+'</td>' +
     '<td><b>'+escapeHtml(inc.act)+'</b><br><span class="reg-td-sub">'+escapeHtml(inc.date)+(inc.time?' '+escapeHtml(inc.time):'')+'</span></td>' +
-    '<td>'+escapeHtml(trStation(inc.station||'—'))+'<br><span class="reg-td-sub">'+escapeHtml(gpaStr)+'</span></td>' +
-    '<td>'+highlight(inc.category, tokens)+'</td>' +
     '<td>'+escapeHtml(trType(inc.type))+'</td>' +
-    '<td class="reg-td-case">'+caseCell+'</td>' +
+    '<td class="reg-td-case"><b>'+caseTitle+'</b><br>'+highlight(inc.cause, tokens)+'</td>' +
+    '<td class="reg-td-case">'+fixText+'</td>' +
+    '<td>'+highlight(inc.category, tokens)+'</td>' +
+    '<td>'+authorCell+'</td>' +
     '<td>'+statusBadge+'</td>' +
     '<td>'+riskBadge+'</td>';
   var detailTr = document.createElement('tr');
   detailTr.className = 'reg-row-detail';
   detailTr.style.display = 'none';
   var td = document.createElement('td');
-  td.colSpan = 7;
+  td.colSpan = 13;
   var cardEl = buildCard(inc, tokens, null);
   var det = cardEl.querySelector('.details');
   var btn = cardEl.querySelector('.toggle-btn');
@@ -1102,15 +1134,23 @@ function render() {
   }
   var table = document.createElement('table');
   table.className = 'reg-table';
-  table.innerHTML = '<thead><tr>' +
-    '<th>'+T('regColAct')+'</th>' +
-    '<th>'+T('regColStation')+'</th>' +
-    '<th>'+T('regColCat')+'</th>' +
-    '<th>'+T('regColType')+'</th>' +
-    '<th>'+T('regColCase')+'</th>' +
-    '<th>'+T('regColStatus')+'</th>' +
-    '<th>'+T('regColRisk')+'</th>' +
-    '</tr></thead><tbody></tbody>';
+  table.innerHTML = '<thead>' +
+    '<tr>' +
+    '<th rowspan="2">'+T('regColCompany')+'</th>' +
+    '<th rowspan="2">'+T('regColFilial')+'</th>' +
+    '<th rowspan="2">'+T('regColKs')+'</th>' +
+    '<th colspan="2">'+T('regColGpaGroup')+'</th>' +
+    '<th rowspan="2">'+T('regColDateTime')+'</th>' +
+    '<th rowspan="2">'+T('regColStopType')+'</th>' +
+    '<th rowspan="2">'+T('regColCause')+'</th>' +
+    '<th rowspan="2">'+T('regColFix')+'</th>' +
+    '<th rowspan="2">'+T('regColStopCat')+'</th>' +
+    '<th rowspan="2">'+T('regColAuthor')+'</th>' +
+    '<th rowspan="2">'+T('regColStatus')+'</th>' +
+    '<th rowspan="2">'+T('regColRisk')+'</th>' +
+    '</tr>' +
+    '<tr><th>'+T('regColModel')+'</th><th>'+T('regColNumber')+'</th></tr>' +
+    '</thead><tbody></tbody>';
   box.appendChild(table);
   var tbody = table.querySelector('tbody');
   for (var s=0;s<scored.length;s++) {
