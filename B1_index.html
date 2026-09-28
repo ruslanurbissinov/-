@@ -36,7 +36,8 @@
   .filters button{padding:8px 14px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text-muted);cursor:pointer;}
   .filters button:hover{background:#EDF1F5;}
   .filters-secondary{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);align-items:center;}
-  .reg-table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;table-layout:auto;}
+  #results{overflow-x:auto;}
+  .reg-table{width:100%;min-width:1360px;border-collapse:collapse;font-size:12.5px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;table-layout:auto;}
   .reg-table thead th{text-align:left;background:#F1F4F8;color:#5A6B7D;font-size:10.5px;text-transform:uppercase;letter-spacing:0.3px;padding:8px 9px;border:1px solid var(--border);white-space:nowrap;}
   .reg-table tbody td{padding:9px 9px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);vertical-align:top;}
   .reg-table tbody td:last-child{border-right:none;}
@@ -45,7 +46,7 @@
   .reg-row-main.expanded{background:#EDF1F5;}
   .reg-row-main.status-investigation{box-shadow:inset 4px 0 0 #F0D98C;}
   .reg-td-sub{color:var(--text-muted);font-size:12px;}
-  .reg-td-case{max-width:320px;}
+  .reg-td-case{max-width:280px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
   .reg-row-detail td{padding:0;background:#FAFBFC;}
   .reg-row-detail .card{border:none;border-radius:0;margin:0;}
   .meta-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;font-size:13px;color:var(--text-muted);}
@@ -190,12 +191,15 @@
       <button id="reset" type="button" disabled>Сбросить</button>
       <button id="langToggle2" type="button" class="lang-btn lang-btn-toolbar">EN</button>
     </div>
-    <div class="filters" style="display:none;">
+    <div class="filters">
+      <select id="fCompany" disabled><option value="" id="fCompanyAll">Все компании</option></select>
+      <select id="fFilial" disabled><option value="" id="fFilialAll">Все филиалы</option></select>
       <select id="fStation" disabled><option value="" id="fStationAll">Все станции</option></select>
-      <select id="fCat" disabled><option value="" id="fCatAll">Все категории</option></select>
+      <select id="fModel" disabled><option value="" id="fModelAll">Все модели</option></select>
       <select id="fGpa" disabled><option value="" id="fGpaAll">Все ГПА</option></select>
       <select id="fYear" disabled><option value="" id="fYearAll">Все годы</option></select>
       <select id="fType" disabled><option value="" id="fTypeAll">Любой тип</option></select>
+      <select id="fCat" disabled><option value="" id="fCatAll">Все категории</option></select>
       <select id="fEquip" disabled><option value="" id="fEquipAll">Всё оборудование</option></select>
     </div>
     <div class="filters filters-secondary">
@@ -243,12 +247,12 @@ function getModelFor(station, gpa) {
   if (!byStation) return null;
   return byStation[gpa] || null;
 }
-var ORG = {"_comment": "Компания и филиал по каждой станции. Компания взята из уставных/паспортных документов проекта; филиал не указан в актах и не выдуман — заполните точным названием филиала/УМГ и пересоберите build.py.", "КС-1 «Алимтау»": {"company": "АО «НК «QazaqGaz»", "filial": null}, "КС-2 «Кереит»": {"company": "АО «НК «QazaqGaz»", "filial": null}, "СКС-2 «Аксу»": {"company": "АО «НК «QazaqGaz»", "filial": null}};
+var ORG = {"_comment": "Справочник «станция -> компания/филиал» для колонок «Компания» и «Филиал» в таблице поиска. Компания указана по уже подтверждённым документам проекта (устав, паспорт). Филиал (например, конкретное ЛПУ/УМГ) в актах расследования не указывался — заполните по факту и пересоберите build.py, значения подтянутся автоматически.", "КС-1 «Алимтау»": {"company": "АО «НК «QazaqGaz»", "filial": null}, "КС-2 «Кереит»": {"company": "АО «НК «QazaqGaz»", "filial": null}, "СКС-2 «Аксу»": {"company": "АО «НК «QazaqGaz»", "filial": null}};
 function getOrgFor(station) {
   return ORG[station] || {};
 }
 var LANG = 'ru';
-var BUILD_STAMP = '2026-09-28 10:45';
+var BUILD_STAMP = '2026-09-28 10:58';
 function FS(ru, en) { return LANG==='en' ? en : ru; }
 var CAT_EN = {
   'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
@@ -287,6 +291,7 @@ var I18N = {
     aiLibraryDocs:'Рекомендуемые документы из библиотеки',
     searchPlaceholder:'Например: свечной кран, потеря пламени, RB6-2, ГПА№2...',
     allGpa:'Все ГПА', allCat:'Все категории', allYear:'Все годы', reset:'Сбросить', allStation:'Все станции', allEquip:'Всё оборудование', allType:'Любой тип',
+    allCompany:'Все компании', allFilial:'Все филиалы', allModel:'Все модели',
     regColAct:'Акт / Дата', regColStation:'Станция / агрегат', regColCat:'Категория причины', regColType:'Тип', regColCase:'Случай', regColStatus:'Статус', regColRisk:'Риск',
     regColCompany:'Компания', regColFilial:'Филиал', regColKs:'КС', regColGpaGroup:'ГПА', regColModel:'Модель', regColNumber:'Нумерация',
     regColDateTime:'Дата/Время', regColStopType:'Вид остановки', regColCause:'Причина остановки', regColFix:'Мероприятия по устранению',
@@ -383,6 +388,7 @@ var I18N = {
     aiLibraryDocs:'Recommended documents from the library',
     searchPlaceholder:'e.g.: ignition valve, flame loss, RB6-2, GPU#2...',
     allGpa:'All units', allCat:'All categories', allYear:'All years', reset:'Reset', allStation:'All stations', allEquip:'All equipment', allType:'Any type',
+    allCompany:'All companies', allFilial:'All branches', allModel:'All models',
     regColAct:'Report / Date', regColStation:'Station / unit', regColCat:'Cause category', regColType:'Type', regColCase:'Case', regColStatus:'Status', regColRisk:'Risk',
     regColCompany:'Company', regColFilial:'Branch', regColKs:'Station', regColGpaGroup:'Unit', regColModel:'Model', regColNumber:'No.',
     regColDateTime:'Date/Time', regColStopType:'Shutdown type', regColCause:'Cause', regColFix:'Corrective measures',
@@ -478,7 +484,7 @@ function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&l
 function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 
 function initFilters() {
-  var allGpa=[], allCat=[], allYear=[], allType=[], allStation=[], allEquip=[];
+  var allGpa=[], allCat=[], allYear=[], allType=[], allStation=[], allEquip=[], allCompany=[], allFilial=[], allModel=[];
   for (var i=0;i<incidents.length;i++) {
     var inc = incidents[i];
     for (var j=0;j<inc.gpa.length;j++) { allGpa.push(inc.gpa[j]); }
@@ -487,9 +493,17 @@ function initFilters() {
     allType.push(inc.type);
     if (inc.station) { allStation.push(inc.station); }
     for (var k=0;k<(inc.tags||[]).length;k++) { allEquip.push(inc.tags[k]); }
+    var org = getOrgFor(inc.station);
+    if (org.company) { allCompany.push(org.company); }
+    if (org.filial) { allFilial.push(org.filial); }
+    for (var g=0; g<inc.gpa.length; g++) {
+      var m = getModelFor(inc.station, inc.gpa[g]);
+      if (m) { allModel.push(m); }
+    }
   }
   fillSelect('fGpa', allGpa); fillSelect('fCat', allCat); fillSelect('fYear', allYear); fillSelect('fType', allType);
   fillSelect('fStation', allStation); fillSelect('fEquip', allEquip);
+  fillSelect('fCompany', allCompany); fillSelect('fFilial', allFilial); fillSelect('fModel', allModel);
   document.getElementById('q').disabled = false;
   document.getElementById('fGpa').disabled = false;
   document.getElementById('fCat').disabled = false;
@@ -497,6 +511,9 @@ function initFilters() {
   document.getElementById('fStation').disabled = false;
   document.getElementById('fType').disabled = false;
   document.getElementById('fEquip').disabled = false;
+  document.getElementById('fCompany').disabled = false;
+  document.getElementById('fFilial').disabled = false;
+  document.getElementById('fModel').disabled = false;
   document.getElementById('reset').disabled = false;
 }
 function fillSelect(id, values) {
@@ -922,7 +939,7 @@ function buildRow(inc, tokens, scoreBadge) {
     '<td>'+escapeHtml(numberStr)+'</td>' +
     '<td><b>'+escapeHtml(inc.act)+'</b><br><span class="reg-td-sub">'+escapeHtml(inc.date)+(inc.time?' '+escapeHtml(inc.time):'')+'</span></td>' +
     '<td>'+escapeHtml(trType(inc.type))+'</td>' +
-    '<td class="reg-td-case"><b>'+caseTitle+'</b><br>'+highlight(inc.cause, tokens)+'</td>' +
+    '<td class="reg-td-case">'+caseTitle+'</td>' +
     '<td class="reg-td-case">'+fixText+'</td>' +
     '<td>'+highlight(inc.category, tokens)+'</td>' +
     '<td>'+authorCell+'</td>' +
@@ -1089,6 +1106,9 @@ function render() {
   var fType = document.getElementById('fType').value;
   var fStation = document.getElementById('fStation').value;
   var fEquip = document.getElementById('fEquip').value;
+  var fCompany = document.getElementById('fCompany').value;
+  var fFilial = document.getElementById('fFilial').value;
+  var fModel = document.getElementById('fModel').value;
   function runPass(allowWords) {
     var out = [];
     for (var i=0;i<incidents.length;i++) {
@@ -1101,6 +1121,13 @@ function render() {
       if (fType && inc.type!==fType) continue;
       if (fStation && inc.station!==fStation) continue;
       if (fEquip && !arrayContains(inc.tags||[], fEquip)) continue;
+      var org = getOrgFor(inc.station);
+      if (fCompany && org.company!==fCompany) continue;
+      if (fFilial && org.filial!==fFilial) continue;
+      if (fModel) {
+        var models = (inc.gpa||[]).map(function(g){ return getModelFor(inc.station, g); });
+        if (models.indexOf(fModel)===-1) continue;
+      }
       var pct = tokenCoverage(inc, tokens, allowWords);
       if (tokens.length && pct < 0.25) continue;
       out.push({inc:inc, score:score, pct:pct});
@@ -1115,7 +1142,7 @@ function render() {
   }
   scored.sort(function(a,b){ if (b.pct!==a.pct) { return b.pct-a.pct; } return b.score-a.score; });
   var countHtml = FS('Найдено: ','Found: ')+'<b>'+scored.length+'</b> '+FS('из','of')+' '+incidents.length+(tokens.length?FS(' (схожесть от 100% до 25%)',' (25–100% match)')+(usedFallback?FS(' · по смыслу, точных тегов не найдено',' · no exact tags, matched by meaning'):''):'');
-  if ((fGpa || fCat || fType || fStation || fEquip) && scored.length) {
+  if ((fGpa || fCat || fType || fStation || fEquip || fCompany || fFilial || fModel) && scored.length) {
     var yrs = [];
     for (var yi=0; yi<scored.length; yi++) { yrs.push(scored[yi].inc.date.slice(-4)); }
     var yMin = yrs.reduce(function(a,b){ return a<b?a:b; });
@@ -1166,6 +1193,9 @@ document.getElementById('fYear').addEventListener('change', render);
 document.getElementById('fStation').addEventListener('change', render);
 document.getElementById('fType').addEventListener('change', render);
 document.getElementById('fEquip').addEventListener('change', render);
+document.getElementById('fCompany').addEventListener('change', render);
+document.getElementById('fFilial').addEventListener('change', render);
+document.getElementById('fModel').addEventListener('change', render);
 document.getElementById('reset').addEventListener('click', function(){
   document.getElementById('q').value='';
   document.getElementById('fGpa').value='';
@@ -1174,6 +1204,9 @@ document.getElementById('reset').addEventListener('click', function(){
   document.getElementById('fType').value='';
   document.getElementById('fStation').value='';
   document.getElementById('fEquip').value='';
+  document.getElementById('fCompany').value='';
+  document.getElementById('fFilial').value='';
+  document.getElementById('fModel').value='';
   setFileStatus('');
   render();
 });
@@ -1422,6 +1455,9 @@ function applyLanguage() {
   document.getElementById('fYearAll').textContent = T('allYear');
   document.getElementById('fTypeAll').textContent = T('allType');
   document.getElementById('fEquipAll').textContent = T('allEquip');
+  document.getElementById('fCompanyAll').textContent = T('allCompany');
+  document.getElementById('fFilialAll').textContent = T('allFilial');
+  document.getElementById('fModelAll').textContent = T('allModel');
   document.getElementById('reset').textContent = T('reset');
   document.getElementById('uploadLabel').innerHTML = T('uploadLabel');
   document.getElementById('sortLabel').textContent = T('sortRelevance');
