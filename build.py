@@ -88,6 +88,9 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
   .filters button{{padding:8px 14px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text-muted);cursor:pointer;}}
   .filters button:hover{{background:#EDF1F5;}}
   .filters-secondary{{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);align-items:center;}}
+  .archive-toggle{{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);cursor:help;}}
+  .archive-toggle input{{cursor:not-allowed;}}
+  #createRecordBtn[disabled]{{opacity:0.55;cursor:not-allowed;}}
   #results{{overflow-x:auto;}}
   .reg-table{{width:100%;min-width:1360px;border-collapse:collapse;font-size:12.5px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;table-layout:auto;}}
   .reg-table thead th{{text-align:left;background:#F1F4F8;color:#5A6B7D;font-size:10.5px;text-transform:uppercase;letter-spacing:0.3px;padding:8px 9px;border:1px solid var(--border);white-space:nowrap;}}
@@ -255,6 +258,8 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
       <select id="fEquip" disabled><option value="" id="fEquipAll">Всё оборудование</option></select>
     </div>
     <div class="filters filters-secondary">
+      <label class="archive-toggle" id="archiveToggleWrap" title="В статической версии платформы все записи всегда видны; переключатель — заготовка под будущий бэкенд с разделением на активные/архивные."><input type="checkbox" id="fArchived" checked disabled> <span id="archiveToggleLabel">Показать архивные (завершённые расследования)</span></label>
+      <button id="createRecordBtn" type="button" class="file-btn" disabled title="Добавление новых записей потребует серверной части (базы данных) — сейчас платформа статическая и собирается из accidents.json.">&#10133; Создать запись</button>
       <label class="file-btn" for="reportFile" id="uploadLabel">&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)</label>
       <input id="reportFile" type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" style="display:none;">
       <span id="fileStatus"></span>
@@ -344,6 +349,10 @@ var I18N = {{
     searchPlaceholder:'Например: свечной кран, потеря пламени, RB6-2, ГПА№2...',
     allGpa:'Все ГПА', allCat:'Все категории', allYear:'Все годы', reset:'Сбросить', allStation:'Все станции', allEquip:'Всё оборудование', allType:'Любой тип',
     allCompany:'Все компании', allFilial:'Все филиалы', allModel:'Все модели',
+    archiveToggleLabel:'Показать архивные (завершённые расследования)',
+    archiveToggleHint:'В статической версии платформы все записи всегда видны; переключатель — заготовка под будущий бэкенд с разделением на активные/архивные.',
+    createRecordBtn:'&#10133; Создать запись',
+    createRecordHint:'Добавление новых записей потребует серверной части (базы данных) — сейчас платформа статическая и собирается из accidents.json.',
     regColAct:'Акт / Дата', regColStation:'Станция / агрегат', regColCat:'Категория причины', regColType:'Тип', regColCase:'Случай', regColStatus:'Статус', regColRisk:'Риск',
     regColCompany:'Компания', regColFilial:'Филиал', regColKs:'КС', regColGpaGroup:'ГПА', regColModel:'Модель', regColNumber:'Нумерация',
     regColDateTime:'Дата/Время', regColStopType:'Вид остановки', regColCause:'Причина остановки', regColFix:'Мероприятия по устранению',
@@ -441,6 +450,10 @@ var I18N = {{
     searchPlaceholder:'e.g.: ignition valve, flame loss, RB6-2, GPU#2...',
     allGpa:'All units', allCat:'All categories', allYear:'All years', reset:'Reset', allStation:'All stations', allEquip:'All equipment', allType:'Any type',
     allCompany:'All companies', allFilial:'All branches', allModel:'All models',
+    archiveToggleLabel:'Show archived (closed investigations)',
+    archiveToggleHint:'In the static version of the platform all records are always visible; this toggle is a placeholder for a future backend with active/archived separation.',
+    createRecordBtn:'&#10133; Create record',
+    createRecordHint:'Adding new records would require a server-side backend (a database) — the platform is currently static and is built from accidents.json.',
     regColAct:'Report / Date', regColStation:'Station / unit', regColCat:'Cause category', regColType:'Type', regColCase:'Case', regColStatus:'Status', regColRisk:'Risk',
     regColCompany:'Company', regColFilial:'Branch', regColKs:'Station', regColGpaGroup:'Unit', regColModel:'Model', regColNumber:'No.',
     regColDateTime:'Date/Time', regColStopType:'Shutdown type', regColCause:'Cause', regColFix:'Corrective measures',
@@ -994,14 +1007,12 @@ function buildRow(inc, tokens, scoreBadge) {{
     '<td class="reg-td-case">'+caseTitle+'</td>' +
     '<td class="reg-td-case">'+fixText+'</td>' +
     '<td>'+highlight(inc.category, tokens)+'</td>' +
-    '<td>'+authorCell+'</td>' +
-    '<td>'+statusBadge+'</td>' +
-    '<td>'+riskBadge+'</td>';
+    '<td>'+authorCell+'</td>';
   var detailTr = document.createElement('tr');
   detailTr.className = 'reg-row-detail';
   detailTr.style.display = 'none';
   var td = document.createElement('td');
-  td.colSpan = 13;
+  td.colSpan = 11;
   var cardEl = buildCard(inc, tokens, null);
   var det = cardEl.querySelector('.details');
   var btn = cardEl.querySelector('.toggle-btn');
@@ -1225,8 +1236,6 @@ function render() {{
     '<th rowspan="2">'+T('regColFix')+'</th>' +
     '<th rowspan="2">'+T('regColStopCat')+'</th>' +
     '<th rowspan="2">'+T('regColAuthor')+'</th>' +
-    '<th rowspan="2">'+T('regColStatus')+'</th>' +
-    '<th rowspan="2">'+T('regColRisk')+'</th>' +
     '</tr>' +
     '<tr><th>'+T('regColModel')+'</th><th>'+T('regColNumber')+'</th></tr>' +
     '</thead><tbody></tbody>';
@@ -1510,6 +1519,10 @@ function applyLanguage() {{
   document.getElementById('fCompanyAll').textContent = T('allCompany');
   document.getElementById('fFilialAll').textContent = T('allFilial');
   document.getElementById('fModelAll').textContent = T('allModel');
+  document.getElementById('archiveToggleLabel').textContent = T('archiveToggleLabel');
+  document.getElementById('archiveToggleWrap').title = T('archiveToggleHint');
+  document.getElementById('createRecordBtn').innerHTML = T('createRecordBtn');
+  document.getElementById('createRecordBtn').title = T('createRecordHint');
   document.getElementById('reset').textContent = T('reset');
   document.getElementById('uploadLabel').innerHTML = T('uploadLabel');
   document.getElementById('sortLabel').textContent = T('sortRelevance');
