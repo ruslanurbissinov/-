@@ -24,15 +24,34 @@
   .lang-btn:hover{background:rgba(255,255,255,0.18);}
   .lang-btn-toolbar{background:var(--surface);color:var(--navy);border:1px solid var(--border);}
   .lang-btn-toolbar:hover{background:#EDF1F5;}
-  .container{max-width:960px;margin:0 auto;padding:20px 20px 60px;}
+  .container{max-width:1360px;margin:0 auto;padding:20px 20px 60px;}
   .toolbar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin:-18px 0 20px;box-shadow:0 2px 10px rgba(15,36,64,0.08);}
   .search-row{display:flex;gap:10px;margin-bottom:12px;}
   .search-row input{flex:1;padding:11px 14px;font-size:14px;border:1px solid var(--border);border-radius:8px;outline:none;font-family:var(--sans);}
+  .search-row button{flex:0 0 auto;padding:8px 14px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text-muted);cursor:pointer;}
+  .search-row button:hover{background:#EDF1F5;}
   .search-row input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(26,54,93,0.12);}
   .filters{display:flex;gap:10px;flex-wrap:wrap;}
   .filters select{padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--text);font-family:var(--sans);}
   .filters button{padding:8px 14px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text-muted);cursor:pointer;}
   .filters button:hover{background:#EDF1F5;}
+  .filters-secondary{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);align-items:center;}
+  .archive-toggle{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);cursor:help;}
+  .archive-toggle input{cursor:not-allowed;}
+  #createRecordBtn[disabled]{opacity:0.55;cursor:not-allowed;}
+  #results{overflow-x:auto;}
+  .reg-table{width:100%;min-width:1360px;border-collapse:collapse;font-size:12.5px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;table-layout:auto;}
+  .reg-table thead th{text-align:left;background:#F1F4F8;color:#5A6B7D;font-size:10.5px;text-transform:uppercase;letter-spacing:0.3px;padding:8px 9px;border:1px solid var(--border);white-space:nowrap;}
+  .reg-table tbody td{padding:9px 9px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);vertical-align:top;}
+  .reg-table tbody td:last-child{border-right:none;}
+  .reg-row-main{cursor:pointer;}
+  .reg-row-main:hover{background:#F7F9FB;}
+  .reg-row-main.expanded{background:#EDF1F5;}
+  .reg-row-main.status-investigation{box-shadow:inset 4px 0 0 #F0D98C;}
+  .reg-td-sub{color:var(--text-muted);font-size:12px;}
+  .reg-td-case{max-width:280px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .reg-row-detail td{padding:0;background:#FAFBFC;}
+  .reg-row-detail .card{border:none;border-radius:0;margin:0;}
   .meta-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;font-size:13px;color:var(--text-muted);}
   .meta-row b{color:var(--text);}
   .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:12px;}
@@ -172,15 +191,23 @@
   <div class="toolbar">
     <div class="search-row">
       <input id="q" type="text" placeholder="Например: свечной кран, потеря пламени, RB6-2, ГПА№2..." autocomplete="off" disabled>
-    </div>
-    <div class="filters">
-      <select id="fStation" disabled><option value="" id="fStationAll">Все станции</option></select>
-      <select id="fGpa" disabled><option value="" id="fGpaAll">Все ГПА</option></select>
-      <select id="fCat" disabled><option value="" id="fCatAll">Все категории</option></select>
-      <select id="fYear" disabled><option value="" id="fYearAll">Все годы</option></select>
-      <select id="fType" style="display:none;"><option value=""></option></select>
       <button id="reset" type="button" disabled>Сбросить</button>
       <button id="langToggle2" type="button" class="lang-btn lang-btn-toolbar">EN</button>
+    </div>
+    <div class="filters">
+      <select id="fCompany" disabled><option value="" id="fCompanyAll">Все компании</option></select>
+      <select id="fFilial" disabled><option value="" id="fFilialAll">Все филиалы</option></select>
+      <select id="fStation" disabled><option value="" id="fStationAll">Все станции</option></select>
+      <select id="fModel" disabled><option value="" id="fModelAll">Все модели</option></select>
+      <select id="fGpa" disabled><option value="" id="fGpaAll">Все ГПА</option></select>
+      <select id="fYear" disabled><option value="" id="fYearAll">Все годы</option></select>
+      <select id="fType" disabled><option value="" id="fTypeAll">Любой тип</option></select>
+      <select id="fCat" disabled><option value="" id="fCatAll">Все категории</option></select>
+      <select id="fEquip" disabled><option value="" id="fEquipAll">Всё оборудование</option></select>
+    </div>
+    <div class="filters filters-secondary">
+      <label class="archive-toggle" id="archiveToggleWrap" title="В статической версии платформы все записи всегда видны; переключатель — заготовка под будущий бэкенд с разделением на активные/архивные."><input type="checkbox" id="fArchived" checked disabled> <span id="archiveToggleLabel">Показать архивные (завершённые расследования)</span></label>
+      <button id="createRecordBtn" type="button" class="file-btn" disabled title="Добавление новых записей потребует серверной части (базы данных) — сейчас платформа статическая и собирается из accidents.json.">&#10133; Создать запись</button>
       <label class="file-btn" for="reportFile" id="uploadLabel">&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)</label>
       <input id="reportFile" type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" style="display:none;">
       <span id="fileStatus"></span>
@@ -205,7 +232,6 @@
       </div>
       <div class="filters">
         <select id="libFCat"><option value="" id="libFCatAll">Все категории</option></select>
-        <select id="libFEquip"><option value="" id="libFEquipAll">Всё оборудование</option></select>
         <button id="libReset" type="button">Сбросить</button>
       </div>
     </div>
@@ -226,8 +252,12 @@ function getModelFor(station, gpa) {
   if (!byStation) return null;
   return byStation[gpa] || null;
 }
+var ORG = {"_comment": "Справочник «станция -> компания/филиал» для колонок «Компания» и «Филиал» в таблице поиска. Компания указана по уже подтверждённым документам проекта (устав, паспорт). Филиал (например, конкретное ЛПУ/УМГ) в актах расследования не указывался — заполните по факту и пересоберите build.py, значения подтянутся автоматически.", "КС-1 «Алимтау»": {"company": "АО «НК «QazaqGaz»", "filial": null}, "КС-2 «Кереит»": {"company": "АО «НК «QazaqGaz»", "filial": null}, "СКС-2 «Аксу»": {"company": "АО «НК «QazaqGaz»", "filial": null}};
+function getOrgFor(station) {
+  return ORG[station] || {};
+}
 var LANG = 'ru';
-var BUILD_STAMP = '2026-09-27 16:05';
+var BUILD_STAMP = '2026-09-28 11:05';
 function FS(ru, en) { return LANG==='en' ? en : ru; }
 var CAT_EN = {
   'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
@@ -265,7 +295,16 @@ var I18N = {
     libSrcNote:'Документы библиотеки (руководства по эксплуатации, сервисные бюллетени, рекомендательные письма) &middot; библиотека загружается из library.json, файлы — в репозитории',
     aiLibraryDocs:'Рекомендуемые документы из библиотеки',
     searchPlaceholder:'Например: свечной кран, потеря пламени, RB6-2, ГПА№2...',
-    allGpa:'Все ГПА', allCat:'Все категории', allYear:'Все годы', reset:'Сбросить', allStation:'Все станции',
+    allGpa:'Все ГПА', allCat:'Все категории', allYear:'Все годы', reset:'Сбросить', allStation:'Все станции', allEquip:'Всё оборудование', allType:'Любой тип',
+    allCompany:'Все компании', allFilial:'Все филиалы', allModel:'Все модели',
+    archiveToggleLabel:'Показать архивные (завершённые расследования)',
+    archiveToggleHint:'В статической версии платформы все записи всегда видны; переключатель — заготовка под будущий бэкенд с разделением на активные/архивные.',
+    createRecordBtn:'&#10133; Создать запись',
+    createRecordHint:'Добавление новых записей потребует серверной части (базы данных) — сейчас платформа статическая и собирается из accidents.json.',
+    regColAct:'Акт / Дата', regColStation:'Станция / агрегат', regColCat:'Категория причины', regColType:'Тип', regColCase:'Случай', regColStatus:'Статус', regColRisk:'Риск',
+    regColCompany:'Компания', regColFilial:'Филиал', regColKs:'КС', regColGpaGroup:'ГПА', regColModel:'Модель', regColNumber:'Нумерация',
+    regColDateTime:'Дата/Время', regColStopType:'Вид остановки', regColCause:'Причина остановки', regColFix:'Мероприятия по устранению',
+    regColStopCat:'Категория остановки', regColAuthor:'Автор', notSpecified:'&mdash;',
     uploadLabel:'&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)',
     sortRelevance:'Сортировка по релевантности', loading:'Загрузка данных...',
     srcNote:'Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория)',
@@ -357,7 +396,16 @@ var I18N = {
     libSrcNote:'Library documents (operation manuals, service bulletins, advisory letters) &middot; loaded from library.json, files are stored in the repository',
     aiLibraryDocs:'Recommended documents from the library',
     searchPlaceholder:'e.g.: ignition valve, flame loss, RB6-2, GPU#2...',
-    allGpa:'All units', allCat:'All categories', allYear:'All years', reset:'Reset', allStation:'All stations',
+    allGpa:'All units', allCat:'All categories', allYear:'All years', reset:'Reset', allStation:'All stations', allEquip:'All equipment', allType:'Any type',
+    allCompany:'All companies', allFilial:'All branches', allModel:'All models',
+    archiveToggleLabel:'Show archived (closed investigations)',
+    archiveToggleHint:'In the static version of the platform all records are always visible; this toggle is a placeholder for a future backend with active/archived separation.',
+    createRecordBtn:'&#10133; Create record',
+    createRecordHint:'Adding new records would require a server-side backend (a database) — the platform is currently static and is built from accidents.json.',
+    regColAct:'Report / Date', regColStation:'Station / unit', regColCat:'Cause category', regColType:'Type', regColCase:'Case', regColStatus:'Status', regColRisk:'Risk',
+    regColCompany:'Company', regColFilial:'Branch', regColKs:'Station', regColGpaGroup:'Unit', regColModel:'Model', regColNumber:'No.',
+    regColDateTime:'Date/Time', regColStopType:'Shutdown type', regColCause:'Cause', regColFix:'Corrective measures',
+    regColStopCat:'Shutdown category', regColAuthor:'Author', notSpecified:'&mdash;',
     uploadLabel:'&#128206; Upload incident report (PDF, Word, TXT, photo)',
     sortRelevance:'Sorted by relevance', loading:'Loading data...',
     srcNote:'Data loaded from accidents.json + defects.json &middot; reports are stored in the repository root',
@@ -449,7 +497,7 @@ function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&l
 function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 
 function initFilters() {
-  var allGpa=[], allCat=[], allYear=[], allType=[], allStation=[];
+  var allGpa=[], allCat=[], allYear=[], allType=[], allStation=[], allEquip=[], allCompany=[], allFilial=[], allModel=[];
   for (var i=0;i<incidents.length;i++) {
     var inc = incidents[i];
     for (var j=0;j<inc.gpa.length;j++) { allGpa.push(inc.gpa[j]); }
@@ -457,14 +505,28 @@ function initFilters() {
     allYear.push(inc.date.slice(-4));
     allType.push(inc.type);
     if (inc.station) { allStation.push(inc.station); }
+    for (var k=0;k<(inc.tags||[]).length;k++) { allEquip.push(inc.tags[k]); }
+    var org = getOrgFor(inc.station);
+    if (org.company) { allCompany.push(org.company); }
+    if (org.filial) { allFilial.push(org.filial); }
+    for (var g=0; g<inc.gpa.length; g++) {
+      var m = getModelFor(inc.station, inc.gpa[g]);
+      if (m) { allModel.push(m); }
+    }
   }
   fillSelect('fGpa', allGpa); fillSelect('fCat', allCat); fillSelect('fYear', allYear); fillSelect('fType', allType);
-  fillSelect('fStation', allStation);
+  fillSelect('fStation', allStation); fillSelect('fEquip', allEquip);
+  fillSelect('fCompany', allCompany); fillSelect('fFilial', allFilial); fillSelect('fModel', allModel);
   document.getElementById('q').disabled = false;
   document.getElementById('fGpa').disabled = false;
   document.getElementById('fCat').disabled = false;
   document.getElementById('fYear').disabled = false;
   document.getElementById('fStation').disabled = false;
+  document.getElementById('fType').disabled = false;
+  document.getElementById('fEquip').disabled = false;
+  document.getElementById('fCompany').disabled = false;
+  document.getElementById('fFilial').disabled = false;
+  document.getElementById('fModel').disabled = false;
   document.getElementById('reset').disabled = false;
 }
 function fillSelect(id, values) {
@@ -490,19 +552,14 @@ function trLibCat(v) {
 }
 
 function initLibFilters() {
-  var allCat=LIB_CATEGORIES.slice(), allEquip=[];
+  var allCat=LIB_CATEGORIES.slice();
   for (var i=0;i<library.length;i++) {
     if (library[i].category) allCat.push(library[i].category);
-    if (library[i].equipment) allEquip.push(library[i].equipment);
   }
   document.getElementById('libFCat').innerHTML = '';
-  document.getElementById('libFEquip').innerHTML = '';
   var catOpt0 = document.createElement('option'); catOpt0.value=''; catOpt0.id='libFCatAll'; catOpt0.textContent = T('libAllCat');
   document.getElementById('libFCat').appendChild(catOpt0);
-  var equipOpt0 = document.createElement('option'); equipOpt0.value=''; equipOpt0.id='libFEquipAll'; equipOpt0.textContent = T('libAllEquip');
-  document.getElementById('libFEquip').appendChild(equipOpt0);
   fillSelect('libFCat', allCat);
-  fillSelect('libFEquip', allEquip);
   var catOpts = document.querySelectorAll('#libFCat option[value]:not([value=""])');
   for (var c=0;c<catOpts.length;c++) { catOpts[c].textContent = trLibCat(catOpts[c].value); }
 }
@@ -518,12 +575,10 @@ function libMatches(doc, q) {
 function renderLibrary() {
   var q = document.getElementById('libQ').value;
   var fCat = document.getElementById('libFCat').value;
-  var fEquip = document.getElementById('libFEquip').value;
   var filtered = [];
   for (var i=0;i<library.length;i++) {
     var doc = library[i];
     if (fCat && doc.category !== fCat) continue;
-    if (fEquip && doc.equipment !== fEquip) continue;
     if (!libMatches(doc, q)) continue;
     filtered.push(doc);
   }
@@ -560,11 +615,9 @@ function renderLibrary() {
 
 document.getElementById('libQ').addEventListener('input', renderLibrary);
 document.getElementById('libFCat').addEventListener('change', renderLibrary);
-document.getElementById('libFEquip').addEventListener('change', renderLibrary);
 document.getElementById('libReset').addEventListener('click', function(){
   document.getElementById('libQ').value = '';
   document.getElementById('libFCat').value = '';
-  document.getElementById('libFEquip').value = '';
   renderLibrary();
 });
 
@@ -859,6 +912,73 @@ function buildCard(inc, tokens, scoreBadge) {
   return card;
 }
 
+function buildRow(inc, tokens, scoreBadge) {
+  var isInvestigation = inc.status === 'investigation';
+  var tr = document.createElement('tr');
+  tr.className = 'reg-row-main' + (isInvestigation ? ' status-investigation' : '');
+  var statusBadge = inc.kind==='incident'
+    ? '<span class="tag '+(isInvestigation?'status-investigation':'status-closed')+'">'+(isInvestigation?T('statusInvestigation'):T('statusClosed'))+'</span>'
+    : '';
+  var riskBadge = '';
+  if (inc.kind==='incident') {
+    var riskItems = incidentRiskItems(inc);
+    if (riskItems.length) {
+      var maxRisk = riskItems.reduce(function(a,b){ return b.score>a.score?b:a; });
+      var lvl = riskLevel(maxRisk.score);
+      var riskCls = maxRisk.score>=60?'risk-high':(maxRisk.score>=35?'risk-medium':'risk-low');
+      riskBadge = '<span class="tag '+riskCls+'">'+lvl.text+'</span>';
+    }
+  }
+  var org = getOrgFor(inc.station);
+  var companyCell = org.company ? escapeHtml(org.company) : '<i style="color:var(--text-muted);">'+T('notSpecified')+'</i>';
+  var filialCell = org.filial ? escapeHtml(org.filial) : '<i style="color:var(--text-muted);">'+T('notSpecified')+'</i>';
+  var gpaList = inc.gpa || [];
+  var modelStr = uniqueSorted(gpaList.map(function(g){ return getModelFor(inc.station, g) || ''; }).filter(function(x){ return x; })).join(', ') || '<i style="color:var(--text-muted);">'+T('notSpecified')+'</i>';
+  var numberStr = gpaList.map(function(g){ return trGpa(g); }).join(', ') || '—';
+  var fixParts = [];
+  if (inc.remediation && inc.remediation.length) {
+    for (var wi=0; wi<inc.remediation.length; wi++) { if (inc.remediation[wi].work_description) fixParts.push(inc.remediation[wi].work_description); }
+  }
+  if (!fixParts.length && inc.recommendation) { fixParts.push(inc.recommendation); }
+  if (!fixParts.length && inc.measures) { fixParts.push(inc.measures); }
+  var fixText = fixParts.length ? highlight(fixParts.join(' · '), tokens) : '—';
+  var authorCell = inc.author ? escapeHtml(inc.author) : '<i style="color:var(--text-muted);">'+T('notSpecified')+'</i>';
+  var caseTitle = highlight(inc.name, tokens) + (scoreBadge ? '<br><span class="tag match" style="margin-top:4px;display:inline-block;">'+escapeHtml(scoreBadge)+'</span>' : '');
+  tr.innerHTML =
+    '<td>'+companyCell+'</td>' +
+    '<td>'+filialCell+'</td>' +
+    '<td>'+escapeHtml(trStation(inc.station||'—'))+'</td>' +
+    '<td>'+modelStr+'</td>' +
+    '<td>'+escapeHtml(numberStr)+'</td>' +
+    '<td><b>'+escapeHtml(inc.act)+'</b><br><span class="reg-td-sub">'+escapeHtml(inc.date)+(inc.time?' '+escapeHtml(inc.time):'')+'</span></td>' +
+    '<td>'+escapeHtml(trType(inc.type))+'</td>' +
+    '<td class="reg-td-case">'+caseTitle+'</td>' +
+    '<td class="reg-td-case">'+fixText+'</td>' +
+    '<td>'+highlight(inc.category, tokens)+'</td>' +
+    '<td>'+authorCell+'</td>';
+  var detailTr = document.createElement('tr');
+  detailTr.className = 'reg-row-detail';
+  detailTr.style.display = 'none';
+  var td = document.createElement('td');
+  td.colSpan = 11;
+  var cardEl = buildCard(inc, tokens, null);
+  var det = cardEl.querySelector('.details');
+  var btn = cardEl.querySelector('.toggle-btn');
+  if (det) { det.className = 'details open'; }
+  if (btn) { btn.style.display = 'none'; }
+  td.appendChild(cardEl);
+  detailTr.appendChild(td);
+  tr.addEventListener('click', function(){
+    var open = detailTr.style.display !== 'none';
+    detailTr.style.display = open ? 'none' : '';
+    tr.className = tr.className.replace(' expanded','') + (open ? '' : ' expanded');
+  });
+  var frag = document.createDocumentFragment();
+  frag.appendChild(tr);
+  frag.appendChild(detailTr);
+  return frag;
+}
+
 function tokenCoverage(inc, tokens) {
   if (!tokens.length) return 1;
   var tagToks = [], wordToks = [];
@@ -996,6 +1116,10 @@ function render() {
   var fYear = document.getElementById('fYear').value;
   var fType = document.getElementById('fType').value;
   var fStation = document.getElementById('fStation').value;
+  var fEquip = document.getElementById('fEquip').value;
+  var fCompany = document.getElementById('fCompany').value;
+  var fFilial = document.getElementById('fFilial').value;
+  var fModel = document.getElementById('fModel').value;
   function runPass(allowWords) {
     var out = [];
     for (var i=0;i<incidents.length;i++) {
@@ -1007,6 +1131,14 @@ function render() {
       if (fYear && inc.date.slice(-4)!==fYear) continue;
       if (fType && inc.type!==fType) continue;
       if (fStation && inc.station!==fStation) continue;
+      if (fEquip && !arrayContains(inc.tags||[], fEquip)) continue;
+      var org = getOrgFor(inc.station);
+      if (fCompany && org.company!==fCompany) continue;
+      if (fFilial && org.filial!==fFilial) continue;
+      if (fModel) {
+        var models = (inc.gpa||[]).map(function(g){ return getModelFor(inc.station, g); });
+        if (models.indexOf(fModel)===-1) continue;
+      }
       var pct = tokenCoverage(inc, tokens, allowWords);
       if (tokens.length && pct < 0.25) continue;
       out.push({inc:inc, score:score, pct:pct});
@@ -1021,7 +1153,7 @@ function render() {
   }
   scored.sort(function(a,b){ if (b.pct!==a.pct) { return b.pct-a.pct; } return b.score-a.score; });
   var countHtml = FS('Найдено: ','Found: ')+'<b>'+scored.length+'</b> '+FS('из','of')+' '+incidents.length+(tokens.length?FS(' (схожесть от 100% до 25%)',' (25–100% match)')+(usedFallback?FS(' · по смыслу, точных тегов не найдено',' · no exact tags, matched by meaning'):''):'');
-  if ((fGpa || fCat || fType || fStation) && scored.length) {
+  if ((fGpa || fCat || fType || fStation || fEquip || fCompany || fFilial || fModel) && scored.length) {
     var yrs = [];
     for (var yi=0; yi<scored.length; yi++) { yrs.push(scored[yi].inc.date.slice(-4)); }
     var yMin = yrs.reduce(function(a,b){ return a<b?a:b; });
@@ -1038,9 +1170,28 @@ function render() {
     box.innerHTML = '<div class="empty"><div>&empty;</div>'+T('nothingFound')+'</div>';
     return;
   }
+  var table = document.createElement('table');
+  table.className = 'reg-table';
+  table.innerHTML = '<thead>' +
+    '<tr>' +
+    '<th rowspan="2">'+T('regColCompany')+'</th>' +
+    '<th rowspan="2">'+T('regColFilial')+'</th>' +
+    '<th rowspan="2">'+T('regColKs')+'</th>' +
+    '<th colspan="2">'+T('regColGpaGroup')+'</th>' +
+    '<th rowspan="2">'+T('regColDateTime')+'</th>' +
+    '<th rowspan="2">'+T('regColStopType')+'</th>' +
+    '<th rowspan="2">'+T('regColCause')+'</th>' +
+    '<th rowspan="2">'+T('regColFix')+'</th>' +
+    '<th rowspan="2">'+T('regColStopCat')+'</th>' +
+    '<th rowspan="2">'+T('regColAuthor')+'</th>' +
+    '</tr>' +
+    '<tr><th>'+T('regColModel')+'</th><th>'+T('regColNumber')+'</th></tr>' +
+    '</thead><tbody></tbody>';
+  box.appendChild(table);
+  var tbody = table.querySelector('tbody');
   for (var s=0;s<scored.length;s++) {
     var badge = tokens.length ? (FS('Схожесть ','Match ')+Math.round(100*scored[s].pct)+'%') : null;
-    box.appendChild(buildCard(scored[s].inc, tokens, badge));
+    tbody.appendChild(buildRow(scored[s].inc, tokens, badge));
   }
 }
 
@@ -1049,6 +1200,11 @@ document.getElementById('fGpa').addEventListener('change', render);
 document.getElementById('fCat').addEventListener('change', render);
 document.getElementById('fYear').addEventListener('change', render);
 document.getElementById('fStation').addEventListener('change', render);
+document.getElementById('fType').addEventListener('change', render);
+document.getElementById('fEquip').addEventListener('change', render);
+document.getElementById('fCompany').addEventListener('change', render);
+document.getElementById('fFilial').addEventListener('change', render);
+document.getElementById('fModel').addEventListener('change', render);
 document.getElementById('reset').addEventListener('click', function(){
   document.getElementById('q').value='';
   document.getElementById('fGpa').value='';
@@ -1056,6 +1212,10 @@ document.getElementById('reset').addEventListener('click', function(){
   document.getElementById('fYear').value='';
   document.getElementById('fType').value='';
   document.getElementById('fStation').value='';
+  document.getElementById('fEquip').value='';
+  document.getElementById('fCompany').value='';
+  document.getElementById('fFilial').value='';
+  document.getElementById('fModel').value='';
   setFileStatus('');
   render();
 });
@@ -1302,6 +1462,15 @@ function applyLanguage() {
   document.getElementById('fStationAll').textContent = T('allStation');
   document.getElementById('fCatAll').textContent = T('allCat');
   document.getElementById('fYearAll').textContent = T('allYear');
+  document.getElementById('fTypeAll').textContent = T('allType');
+  document.getElementById('fEquipAll').textContent = T('allEquip');
+  document.getElementById('fCompanyAll').textContent = T('allCompany');
+  document.getElementById('fFilialAll').textContent = T('allFilial');
+  document.getElementById('fModelAll').textContent = T('allModel');
+  document.getElementById('archiveToggleLabel').textContent = T('archiveToggleLabel');
+  document.getElementById('archiveToggleWrap').title = T('archiveToggleHint');
+  document.getElementById('createRecordBtn').innerHTML = T('createRecordBtn');
+  document.getElementById('createRecordBtn').title = T('createRecordHint');
   document.getElementById('reset').textContent = T('reset');
   document.getElementById('uploadLabel').innerHTML = T('uploadLabel');
   document.getElementById('sortLabel').textContent = T('sortRelevance');
@@ -1314,6 +1483,8 @@ function applyLanguage() {
   for (var i=0;i<gpaOpts.length;i++) { gpaOpts[i].textContent = trGpa(gpaOpts[i].value); }
   var catOpts = document.querySelectorAll('#fCat option[value]:not([value=""])');
   for (var j=0;j<catOpts.length;j++) { catOpts[j].textContent = trCat(catOpts[j].value); }
+  var typeOpts = document.querySelectorAll('#fType option[value]:not([value=""])');
+  for (var t=0;t<typeOpts.length;t++) { typeOpts[t].textContent = trType(typeOpts[t].value); }
   render();
   _dashRendered = false;
   if (document.getElementById('dashboardView').style.display !== 'none') { renderDashboard(); }
