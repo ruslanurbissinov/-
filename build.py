@@ -84,6 +84,18 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
   .filters select{{padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--text);font-family:var(--sans);}}
   .filters button{{padding:8px 14px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text-muted);cursor:pointer;}}
   .filters button:hover{{background:#EDF1F5;}}
+  .filters-secondary{{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);align-items:center;}}
+  .reg-table{{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;}}
+  .reg-table thead th{{text-align:left;background:#F1F4F8;color:#5A6B7D;font-size:11.5px;text-transform:uppercase;letter-spacing:0.3px;padding:10px 12px;border-bottom:1px solid var(--border);}}
+  .reg-table tbody td{{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;}}
+  .reg-row-main{{cursor:pointer;}}
+  .reg-row-main:hover{{background:#F7F9FB;}}
+  .reg-row-main.expanded{{background:#EDF1F5;}}
+  .reg-row-main.status-investigation{{box-shadow:inset 4px 0 0 #F0D98C;}}
+  .reg-td-sub{{color:var(--text-muted);font-size:12px;}}
+  .reg-td-case{{max-width:320px;}}
+  .reg-row-detail td{{padding:0;background:#FAFBFC;}}
+  .reg-row-detail .card{{border:none;border-radius:0;margin:0;}}
   .meta-row{{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;font-size:13px;color:var(--text-muted);}}
   .meta-row b{{color:var(--text);}}
   .card{{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:12px;}}
@@ -226,10 +238,13 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
     <div class="filters">
       <select id="fStation" disabled><option value="" id="fStationAll">Все станции</option></select>
-      <select id="fGpa" disabled><option value="" id="fGpaAll">Все ГПА</option></select>
       <select id="fCat" disabled><option value="" id="fCatAll">Все категории</option></select>
+      <select id="fGpa" disabled><option value="" id="fGpaAll">Все ГПА</option></select>
       <select id="fYear" disabled><option value="" id="fYearAll">Все годы</option></select>
-      <select id="fType" style="display:none;"><option value=""></option></select>
+      <select id="fType" disabled><option value="" id="fTypeAll">Любой тип</option></select>
+      <select id="fEquip" disabled><option value="" id="fEquipAll">Всё оборудование</option></select>
+    </div>
+    <div class="filters filters-secondary">
       <button id="reset" type="button" disabled>Сбросить</button>
       <button id="langToggle2" type="button" class="lang-btn lang-btn-toolbar">EN</button>
       <label class="file-btn" for="reportFile" id="uploadLabel">&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)</label>
@@ -256,7 +271,6 @@ WEB_HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
       <div class="filters">
         <select id="libFCat"><option value="" id="libFCatAll">Все категории</option></select>
-        <select id="libFEquip"><option value="" id="libFEquipAll">Всё оборудование</option></select>
         <button id="libReset" type="button">Сбросить</button>
       </div>
     </div>
@@ -316,7 +330,8 @@ var I18N = {{
     libSrcNote:'Документы библиотеки (руководства по эксплуатации, сервисные бюллетени, рекомендательные письма) &middot; библиотека загружается из library.json, файлы — в репозитории',
     aiLibraryDocs:'Рекомендуемые документы из библиотеки',
     searchPlaceholder:'Например: свечной кран, потеря пламени, RB6-2, ГПА№2...',
-    allGpa:'Все ГПА', allCat:'Все категории', allYear:'Все годы', reset:'Сбросить', allStation:'Все станции',
+    allGpa:'Все ГПА', allCat:'Все категории', allYear:'Все годы', reset:'Сбросить', allStation:'Все станции', allEquip:'Всё оборудование', allType:'Любой тип',
+    regColAct:'Акт / Дата', regColStation:'Станция / агрегат', regColCat:'Категория причины', regColType:'Тип', regColCase:'Случай', regColStatus:'Статус', regColRisk:'Риск',
     uploadLabel:'&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)',
     sortRelevance:'Сортировка по релевантности', loading:'Загрузка данных...',
     srcNote:'Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория)',
@@ -408,7 +423,8 @@ var I18N = {{
     libSrcNote:'Library documents (operation manuals, service bulletins, advisory letters) &middot; loaded from library.json, files are stored in the repository',
     aiLibraryDocs:'Recommended documents from the library',
     searchPlaceholder:'e.g.: ignition valve, flame loss, RB6-2, GPU#2...',
-    allGpa:'All units', allCat:'All categories', allYear:'All years', reset:'Reset', allStation:'All stations',
+    allGpa:'All units', allCat:'All categories', allYear:'All years', reset:'Reset', allStation:'All stations', allEquip:'All equipment', allType:'Any type',
+    regColAct:'Report / Date', regColStation:'Station / unit', regColCat:'Cause category', regColType:'Type', regColCase:'Case', regColStatus:'Status', regColRisk:'Risk',
     uploadLabel:'&#128206; Upload incident report (PDF, Word, TXT, photo)',
     sortRelevance:'Sorted by relevance', loading:'Loading data...',
     srcNote:'Data loaded from accidents.json + defects.json &middot; reports are stored in the repository root',
@@ -500,7 +516,7 @@ function escapeHtml(s) {{ return String(s).replace(/&/g,'&amp;').replace(/</g,'&
 function escapeRegExp(s) {{ return s.replace(/[.*+?^${{}}()|[\\]\\\\]/g,'\\\\$&'); }}
 
 function initFilters() {{
-  var allGpa=[], allCat=[], allYear=[], allType=[], allStation=[];
+  var allGpa=[], allCat=[], allYear=[], allType=[], allStation=[], allEquip=[];
   for (var i=0;i<incidents.length;i++) {{
     var inc = incidents[i];
     for (var j=0;j<inc.gpa.length;j++) {{ allGpa.push(inc.gpa[j]); }}
@@ -508,14 +524,17 @@ function initFilters() {{
     allYear.push(inc.date.slice(-4));
     allType.push(inc.type);
     if (inc.station) {{ allStation.push(inc.station); }}
+    for (var k=0;k<(inc.tags||[]).length;k++) {{ allEquip.push(inc.tags[k]); }}
   }}
   fillSelect('fGpa', allGpa); fillSelect('fCat', allCat); fillSelect('fYear', allYear); fillSelect('fType', allType);
-  fillSelect('fStation', allStation);
+  fillSelect('fStation', allStation); fillSelect('fEquip', allEquip);
   document.getElementById('q').disabled = false;
   document.getElementById('fGpa').disabled = false;
   document.getElementById('fCat').disabled = false;
   document.getElementById('fYear').disabled = false;
   document.getElementById('fStation').disabled = false;
+  document.getElementById('fType').disabled = false;
+  document.getElementById('fEquip').disabled = false;
   document.getElementById('reset').disabled = false;
 }}
 function fillSelect(id, values) {{
@@ -541,19 +560,14 @@ function trLibCat(v) {{
 }}
 
 function initLibFilters() {{
-  var allCat=LIB_CATEGORIES.slice(), allEquip=[];
+  var allCat=LIB_CATEGORIES.slice();
   for (var i=0;i<library.length;i++) {{
     if (library[i].category) allCat.push(library[i].category);
-    if (library[i].equipment) allEquip.push(library[i].equipment);
   }}
   document.getElementById('libFCat').innerHTML = '';
-  document.getElementById('libFEquip').innerHTML = '';
   var catOpt0 = document.createElement('option'); catOpt0.value=''; catOpt0.id='libFCatAll'; catOpt0.textContent = T('libAllCat');
   document.getElementById('libFCat').appendChild(catOpt0);
-  var equipOpt0 = document.createElement('option'); equipOpt0.value=''; equipOpt0.id='libFEquipAll'; equipOpt0.textContent = T('libAllEquip');
-  document.getElementById('libFEquip').appendChild(equipOpt0);
   fillSelect('libFCat', allCat);
-  fillSelect('libFEquip', allEquip);
   var catOpts = document.querySelectorAll('#libFCat option[value]:not([value=""])');
   for (var c=0;c<catOpts.length;c++) {{ catOpts[c].textContent = trLibCat(catOpts[c].value); }}
 }}
@@ -569,12 +583,10 @@ function libMatches(doc, q) {{
 function renderLibrary() {{
   var q = document.getElementById('libQ').value;
   var fCat = document.getElementById('libFCat').value;
-  var fEquip = document.getElementById('libFEquip').value;
   var filtered = [];
   for (var i=0;i<library.length;i++) {{
     var doc = library[i];
     if (fCat && doc.category !== fCat) continue;
-    if (fEquip && doc.equipment !== fEquip) continue;
     if (!libMatches(doc, q)) continue;
     filtered.push(doc);
   }}
@@ -611,11 +623,9 @@ function renderLibrary() {{
 
 document.getElementById('libQ').addEventListener('input', renderLibrary);
 document.getElementById('libFCat').addEventListener('change', renderLibrary);
-document.getElementById('libFEquip').addEventListener('change', renderLibrary);
 document.getElementById('libReset').addEventListener('click', function(){{
   document.getElementById('libQ').value = '';
   document.getElementById('libFCat').value = '';
-  document.getElementById('libFEquip').value = '';
   renderLibrary();
 }});
 
@@ -910,6 +920,56 @@ function buildCard(inc, tokens, scoreBadge) {{
   return card;
 }}
 
+function buildRow(inc, tokens, scoreBadge) {{
+  var isInvestigation = inc.status === 'investigation';
+  var tr = document.createElement('tr');
+  tr.className = 'reg-row-main' + (isInvestigation ? ' status-investigation' : '');
+  var statusBadge = inc.kind==='incident'
+    ? '<span class="tag '+(isInvestigation?'status-investigation':'status-closed')+'">'+(isInvestigation?T('statusInvestigation'):T('statusClosed'))+'</span>'
+    : '';
+  var riskBadge = '';
+  if (inc.kind==='incident') {{
+    var riskItems = incidentRiskItems(inc);
+    if (riskItems.length) {{
+      var maxRisk = riskItems.reduce(function(a,b){{ return b.score>a.score?b:a; }});
+      var lvl = riskLevel(maxRisk.score);
+      var riskCls = maxRisk.score>=60?'risk-high':(maxRisk.score>=35?'risk-medium':'risk-low');
+      riskBadge = '<span class="tag '+riskCls+'">'+lvl.text+'</span>';
+    }}
+  }}
+  var gpaStr = (inc.gpa||[]).map(function(g){{ return trGpa(g); }}).join(', ');
+  var caseCell = highlight(inc.name, tokens) + (scoreBadge ? '<br><span class="tag match" style="margin-top:4px;display:inline-block;">'+escapeHtml(scoreBadge)+'</span>' : '');
+  tr.innerHTML =
+    '<td><b>'+escapeHtml(inc.act)+'</b><br><span class="reg-td-sub">'+escapeHtml(inc.date)+(inc.time?' '+escapeHtml(inc.time):'')+'</span></td>' +
+    '<td>'+escapeHtml(trStation(inc.station||'—'))+'<br><span class="reg-td-sub">'+escapeHtml(gpaStr)+'</span></td>' +
+    '<td>'+highlight(inc.category, tokens)+'</td>' +
+    '<td>'+escapeHtml(trType(inc.type))+'</td>' +
+    '<td class="reg-td-case">'+caseCell+'</td>' +
+    '<td>'+statusBadge+'</td>' +
+    '<td>'+riskBadge+'</td>';
+  var detailTr = document.createElement('tr');
+  detailTr.className = 'reg-row-detail';
+  detailTr.style.display = 'none';
+  var td = document.createElement('td');
+  td.colSpan = 7;
+  var cardEl = buildCard(inc, tokens, null);
+  var det = cardEl.querySelector('.details');
+  var btn = cardEl.querySelector('.toggle-btn');
+  if (det) {{ det.className = 'details open'; }}
+  if (btn) {{ btn.style.display = 'none'; }}
+  td.appendChild(cardEl);
+  detailTr.appendChild(td);
+  tr.addEventListener('click', function(){{
+    var open = detailTr.style.display !== 'none';
+    detailTr.style.display = open ? 'none' : '';
+    tr.className = tr.className.replace(' expanded','') + (open ? '' : ' expanded');
+  }});
+  var frag = document.createDocumentFragment();
+  frag.appendChild(tr);
+  frag.appendChild(detailTr);
+  return frag;
+}}
+
 function tokenCoverage(inc, tokens) {{
   if (!tokens.length) return 1;
   var tagToks = [], wordToks = [];
@@ -1047,6 +1107,7 @@ function render() {{
   var fYear = document.getElementById('fYear').value;
   var fType = document.getElementById('fType').value;
   var fStation = document.getElementById('fStation').value;
+  var fEquip = document.getElementById('fEquip').value;
   function runPass(allowWords) {{
     var out = [];
     for (var i=0;i<incidents.length;i++) {{
@@ -1058,6 +1119,7 @@ function render() {{
       if (fYear && inc.date.slice(-4)!==fYear) continue;
       if (fType && inc.type!==fType) continue;
       if (fStation && inc.station!==fStation) continue;
+      if (fEquip && !arrayContains(inc.tags||[], fEquip)) continue;
       var pct = tokenCoverage(inc, tokens, allowWords);
       if (tokens.length && pct < 0.25) continue;
       out.push({{inc:inc, score:score, pct:pct}});
@@ -1072,7 +1134,7 @@ function render() {{
   }}
   scored.sort(function(a,b){{ if (b.pct!==a.pct) {{ return b.pct-a.pct; }} return b.score-a.score; }});
   var countHtml = FS('Найдено: ','Found: ')+'<b>'+scored.length+'</b> '+FS('из','of')+' '+incidents.length+(tokens.length?FS(' (схожесть от 100% до 25%)',' (25\u2013100% match)')+(usedFallback?FS(' \u00b7 по смыслу, точных тегов не найдено',' \u00b7 no exact tags, matched by meaning'):''):'');
-  if ((fGpa || fCat || fType || fStation) && scored.length) {{
+  if ((fGpa || fCat || fType || fStation || fEquip) && scored.length) {{
     var yrs = [];
     for (var yi=0; yi<scored.length; yi++) {{ yrs.push(scored[yi].inc.date.slice(-4)); }}
     var yMin = yrs.reduce(function(a,b){{ return a<b?a:b; }});
@@ -1089,9 +1151,22 @@ function render() {{
     box.innerHTML = '<div class="empty"><div>&empty;</div>'+T('nothingFound')+'</div>';
     return;
   }}
+  var table = document.createElement('table');
+  table.className = 'reg-table';
+  table.innerHTML = '<thead><tr>' +
+    '<th>'+T('regColAct')+'</th>' +
+    '<th>'+T('regColStation')+'</th>' +
+    '<th>'+T('regColCat')+'</th>' +
+    '<th>'+T('regColType')+'</th>' +
+    '<th>'+T('regColCase')+'</th>' +
+    '<th>'+T('regColStatus')+'</th>' +
+    '<th>'+T('regColRisk')+'</th>' +
+    '</tr></thead><tbody></tbody>';
+  box.appendChild(table);
+  var tbody = table.querySelector('tbody');
   for (var s=0;s<scored.length;s++) {{
     var badge = tokens.length ? (FS('Схожесть ','Match ')+Math.round(100*scored[s].pct)+'%') : null;
-    box.appendChild(buildCard(scored[s].inc, tokens, badge));
+    tbody.appendChild(buildRow(scored[s].inc, tokens, badge));
   }}
 }}
 
@@ -1100,6 +1175,8 @@ document.getElementById('fGpa').addEventListener('change', render);
 document.getElementById('fCat').addEventListener('change', render);
 document.getElementById('fYear').addEventListener('change', render);
 document.getElementById('fStation').addEventListener('change', render);
+document.getElementById('fType').addEventListener('change', render);
+document.getElementById('fEquip').addEventListener('change', render);
 document.getElementById('reset').addEventListener('click', function(){{
   document.getElementById('q').value='';
   document.getElementById('fGpa').value='';
@@ -1107,6 +1184,7 @@ document.getElementById('reset').addEventListener('click', function(){{
   document.getElementById('fYear').value='';
   document.getElementById('fType').value='';
   document.getElementById('fStation').value='';
+  document.getElementById('fEquip').value='';
   setFileStatus('');
   render();
 }});
@@ -1353,6 +1431,8 @@ function applyLanguage() {{
   document.getElementById('fStationAll').textContent = T('allStation');
   document.getElementById('fCatAll').textContent = T('allCat');
   document.getElementById('fYearAll').textContent = T('allYear');
+  document.getElementById('fTypeAll').textContent = T('allType');
+  document.getElementById('fEquipAll').textContent = T('allEquip');
   document.getElementById('reset').textContent = T('reset');
   document.getElementById('uploadLabel').innerHTML = T('uploadLabel');
   document.getElementById('sortLabel').textContent = T('sortRelevance');
@@ -1365,6 +1445,8 @@ function applyLanguage() {{
   for (var i=0;i<gpaOpts.length;i++) {{ gpaOpts[i].textContent = trGpa(gpaOpts[i].value); }}
   var catOpts = document.querySelectorAll('#fCat option[value]:not([value=""])');
   for (var j=0;j<catOpts.length;j++) {{ catOpts[j].textContent = trCat(catOpts[j].value); }}
+  var typeOpts = document.querySelectorAll('#fType option[value]:not([value=""])');
+  for (var t=0;t<typeOpts.length;t++) {{ typeOpts[t].textContent = trType(typeOpts[t].value); }}
   render();
   _dashRendered = false;
   if (document.getElementById('dashboardView').style.display !== 'none') {{ renderDashboard(); }}
