@@ -356,7 +356,7 @@ var I18N = {{
     regColAct:'Акт / Дата', regColStation:'Станция / агрегат', regColCat:'Категория причины', regColType:'Тип', regColCase:'Случай', regColStatus:'Статус', regColRisk:'Риск',
     regColCompany:'Компания', regColFilial:'Филиал', regColKs:'КС', regColGpaGroup:'ГПА', regColModel:'Модель', regColNumber:'Нумерация',
     regColDateTime:'Дата/Время', regColStopType:'Вид остановки', regColCause:'Причина остановки', regColFix:'Мероприятия по устранению',
-    regColStopCat:'Категория остановки', regColAuthor:'Автор', notSpecified:'&mdash;',
+    regColStopCat:'Категория остановки', regColVenting:'Объём газа', regColAuthor:'Автор', notSpecified:'&mdash;',
     uploadLabel:'&#128206; Загрузить файл донесения (PDF, Word, TXT, фото)',
     sortRelevance:'Сортировка по релевантности', loading:'Загрузка данных...',
     srcNote:'Данные загружаются из accidents.json + defects.json &middot; акты — (лежат в корне репозитория)',
@@ -460,7 +460,7 @@ var I18N = {{
     regColAct:'Report / Date', regColStation:'Station / unit', regColCat:'Cause category', regColType:'Type', regColCase:'Case', regColStatus:'Status', regColRisk:'Risk',
     regColCompany:'Company', regColFilial:'Branch', regColKs:'Station', regColGpaGroup:'Unit', regColModel:'Model', regColNumber:'No.',
     regColDateTime:'Date/Time', regColStopType:'Shutdown type', regColCause:'Cause', regColFix:'Corrective measures',
-    regColStopCat:'Shutdown category', regColAuthor:'Author', notSpecified:'&mdash;',
+    regColStopCat:'Shutdown category', regColVenting:'Gas volume', regColAuthor:'Author', notSpecified:'&mdash;',
     uploadLabel:'&#128206; Upload incident report (PDF, Word, TXT, photo)',
     sortRelevance:'Sorted by relevance', loading:'Loading data...',
     srcNote:'Data loaded from accidents.json + defects.json &middot; reports are stored in the repository root',
@@ -838,8 +838,6 @@ function buildCard(inc, tokens, scoreBadge) {{
   htmlStr += '<div class="card-subtabs">';
   htmlStr += '<button class="subtab-btn active" type="button" data-tab="inv">'+T('tabInvestigation')+'</button>';
   htmlStr += '<button class="subtab-btn" type="button" data-tab="work">'+T('tabWorkOrder')+'</button>';
-  htmlStr += '<button class="subtab-btn" type="button" data-tab="vent">'+T('tabVenting')+'</button>';
-  htmlStr += '<button class="subtab-btn" type="button" data-tab="reports">'+T('tabReports')+'</button>';
   htmlStr += '</div>';
 
   // --- Investigation pane ---
@@ -892,32 +890,6 @@ function buildCard(inc, tokens, scoreBadge) {{
   if (!hasWork) {{
     htmlStr += '</div>';
   }}
-
-  // --- Gas venting pane (факт стравливания контура ГПА по данным акта техрасследования) ---
-  htmlStr += '<div class="subtab-pane" data-pane="vent" style="display:none;">';
-  if (inc.venting_occurred === true) {{
-    htmlStr += '<p><b>'+T('ventingLabel')+'</b> <span class="tag" style="background:#FDEDEA;color:#B3261E;">'+T('ventingYes')+'</span></p>';
-    htmlStr += '<p style="color:var(--text-muted);">'+T('ventingNote')+'</p>';
-  }} else if (inc.venting_occurred === false) {{
-    htmlStr += '<p><b>'+T('ventingLabel')+'</b> <span class="tag" style="background:#E8F3EC;color:#1E7A3D;">'+T('ventingNo')+'</span></p>';
-  }} else {{
-    htmlStr += '<p><b>'+T('ventingLabel')+'</b> <i style="color:var(--text-muted);">'+T('ventingUnknown')+'</i></p>';
-  }}
-  htmlStr += '</div>';
-
-  // --- Reports pane (донесения: pdf/word и т.п., приложенные к случаю) ---
-  htmlStr += '<div class="subtab-pane" data-pane="reports" style="display:none;">';
-  var reportFiles = inc.report_files || [];
-  if (!reportFiles.length) {{
-    htmlStr += '<p style="color:var(--text-muted);">'+T('noReports')+'</p>';
-  }} else {{
-    for (var rf=0; rf<reportFiles.length; rf++) {{
-      var rep = reportFiles[rf];
-      htmlStr += '<p><a class="doc-link" href="'+encodeURIComponent(rep.file)+'" target="_blank">'+escapeHtml(rep.title || T('openReportFile'))+'</a></p>';
-    }}
-  }}
-  htmlStr += '<p style="font-size:12px;color:var(--text-muted);margin-top:10px;">'+T('reportsAutoDigitizeNote')+'</p>';
-  htmlStr += '</div>';
 
   htmlStr += '</div>';
   card.innerHTML = htmlStr;
@@ -979,6 +951,7 @@ function buildRow(inc, tokens, scoreBadge) {{
   var fixText = fixParts.length ? highlight(fixParts.join(' · '), tokens) : '—';
   var authorCell = inc.author ? escapeHtml(inc.author) : '<i style="color:var(--text-muted);">'+T('notSpecified')+'</i>';
   var caseTitle = highlight(inc.name, tokens) + (scoreBadge ? '<br><span class="tag match" style="margin-top:4px;display:inline-block;">'+escapeHtml(scoreBadge)+'</span>' : '');
+  var ventingCell = inc.venting_occurred === true ? T('ventingYes') : (inc.venting_occurred === false ? T('ventingNo') : '<i style="color:var(--text-muted);">'+T('notSpecified')+'</i>');
   tr.innerHTML =
     '<td>'+companyCell+'</td>' +
     '<td>'+filialCell+'</td>' +
@@ -990,12 +963,13 @@ function buildRow(inc, tokens, scoreBadge) {{
     '<td class="reg-td-case">'+caseTitle+'</td>' +
     '<td class="reg-td-case">'+fixText+'</td>' +
     '<td>'+highlight(inc.category, tokens)+'</td>' +
+    '<td>'+ventingCell+'</td>' +
     '<td>'+authorCell+'</td>';
   var detailTr = document.createElement('tr');
   detailTr.className = 'reg-row-detail';
   detailTr.style.display = 'none';
   var td = document.createElement('td');
-  td.colSpan = 11;
+  td.colSpan = 12;
   var cardEl = buildCard(inc, tokens, null);
   var det = cardEl.querySelector('.details');
   var btn = cardEl.querySelector('.toggle-btn');
@@ -1218,6 +1192,7 @@ function render() {{
     '<th rowspan="2">'+T('regColCause')+'</th>' +
     '<th rowspan="2">'+T('regColFix')+'</th>' +
     '<th rowspan="2">'+T('regColStopCat')+'</th>' +
+    '<th rowspan="2">'+T('regColVenting')+'</th>' +
     '<th rowspan="2">'+T('regColAuthor')+'</th>' +
     '</tr>' +
     '<tr><th>'+T('regColModel')+'</th><th>'+T('regColNumber')+'</th></tr>' +
