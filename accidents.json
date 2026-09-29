@@ -21,7 +21,8 @@
       "PDIT 563"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2020
+    "year": 2020,
+    "venting_occurred": null
   },
   {
     "act": "№1",
@@ -48,7 +49,8 @@
       "FCV-211"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2022
+    "year": 2022,
+    "venting_occurred": null
   },
   {
     "act": "№2",
@@ -75,7 +77,8 @@
       "FCV-211"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2022
+    "year": 2022,
+    "venting_occurred": null
   },
   {
     "act": "№3",
@@ -99,7 +102,8 @@
     ],
     "downtime_min": 28,
     "station": "КС-1 «Алимтау»",
-    "year": 2022
+    "year": 2022,
+    "venting_occurred": null
   },
   {
     "act": "№5",
@@ -122,7 +126,8 @@
       "XV-784"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2022
+    "year": 2022,
+    "venting_occurred": null
   },
   {
     "act": "№1",
@@ -144,7 +149,8 @@
     "remediation": [],
     "tags": [],
     "station": "КС-1 «Алимтау»",
-    "year": 2023
+    "year": 2023,
+    "venting_occurred": null
   },
   {
     "act": "№2",
@@ -177,7 +183,8 @@
       "RIO"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2023
+    "year": 2023,
+    "venting_occurred": null
   },
   {
     "act": "№5",
@@ -201,7 +208,8 @@
       "XV-4204"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2023
+    "year": 2023,
+    "venting_occurred": null
   },
   {
     "act": "№1",
@@ -227,7 +235,8 @@
       "UCP1"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2024
+    "year": 2024,
+    "venting_occurred": null
   },
   {
     "act": "№2",
@@ -249,7 +258,8 @@
     "remediation": [],
     "tags": [],
     "station": "КС-1 «Алимтау»",
-    "year": 2024
+    "year": 2024,
+    "venting_occurred": null
   },
   {
     "act": "№3",
@@ -274,7 +284,8 @@
       "NTRON 509"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2024
+    "year": 2024,
+    "venting_occurred": null
   },
   {
     "act": "№4",
@@ -295,7 +306,8 @@
     "remediation": [],
     "tags": [],
     "station": "КС-1 «Алимтау»",
-    "year": 2024
+    "year": 2024,
+    "venting_occurred": null
   },
   {
     "act": "№1",
@@ -319,7 +331,8 @@
       "MOV7501"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№1",
@@ -343,7 +356,8 @@
       "PDIT-563"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2026
+    "year": 2026,
+    "venting_occurred": null
   },
   {
     "act": "№4",
@@ -374,7 +388,8 @@
       "CDP"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2023
+    "year": 2023,
+    "venting_occurred": null
   },
   {
     "act": "№3",
@@ -397,7 +412,8 @@
       "XV 222"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2018
+    "year": 2018,
+    "venting_occurred": null
   },
   {
     "act": "№4",
@@ -419,7 +435,8 @@
     "remediation": [],
     "tags": [],
     "station": "КС-1 «Алимтау»",
-    "year": 2018
+    "year": 2018,
+    "venting_occurred": null
   },
   {
     "act": "№6",
@@ -442,7 +459,8 @@
       "FCV-780"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2018
+    "year": 2018,
+    "venting_occurred": null
   },
   {
     "act": "№7",
@@ -466,7 +484,8 @@
       "TE 403-1B"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2018
+    "year": 2018,
+    "venting_occurred": null
   },
   {
     "act": "№1",
@@ -490,7 +509,8 @@
       "TE 401-1B"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2018
+    "year": 2018,
+    "venting_occurred": null
   },
   {
     "act": "№2",
@@ -512,7 +532,8 @@
     "remediation": [],
     "tags": [],
     "station": "КС-1 «Алимтау»",
-    "year": 2018
+    "year": 2018,
+    "venting_occurred": null
   },
   {
     "act": "№5",
@@ -536,7 +557,8 @@
       "ГГ 6800"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2018
+    "year": 2018,
+    "venting_occurred": null
   },
   {
     "act": "№8",
@@ -560,7 +582,8 @@
       "К51-PR122/P"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2018
+    "year": 2018,
+    "venting_occurred": null
   },
   {
     "act": "№9",
@@ -584,7 +607,8 @@
       "CDVR"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2018
+    "year": 2018,
+    "venting_occurred": null
   },
   {
     "act": "№1",
@@ -608,7 +632,8 @@
       "UCP-1"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2019
+    "year": 2019,
+    "venting_occurred": null
   },
   {
     "act": "№2",
@@ -638,7 +663,8 @@
       "SCADA"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2019
+    "year": 2019,
+    "venting_occurred": null
   },
   {
     "act": "№3",
@@ -660,7 +686,8 @@
     "remediation": [],
     "tags": [],
     "station": "КС-1 «Алимтау»",
-    "year": 2019
+    "year": 2019,
+    "venting_occurred": null
   },
   {
     "act": "№4",
@@ -685,7 +712,8 @@
       "UCP2"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2019
+    "year": 2019,
+    "venting_occurred": true
   },
   {
     "act": "№5",
@@ -712,7 +740,8 @@
       "SUVT"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2019
+    "year": 2019,
+    "venting_occurred": null
   },
   {
     "act": "№6",
@@ -736,7 +765,8 @@
       "НУ-640"
     ],
     "station": "КС-1 «Алимтау»",
-    "year": 2019
+    "year": 2019,
+    "venting_occurred": null
   },
   {
     "act": "№1",
@@ -762,7 +792,8 @@
       "DeviceNet",
       "EMV"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№2",
@@ -789,7 +820,8 @@
       "детонация",
       "E402"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№3",
@@ -815,7 +847,8 @@
       "DeviceNet",
       "EMV Central"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№4",
@@ -842,7 +875,8 @@
       "G3516C",
       "код 262-3"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№5",
@@ -869,7 +903,8 @@
       "детонация",
       "E402"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№6",
@@ -895,7 +930,8 @@
       "MOOG DS2000XP",
       "Secondary"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№7",
@@ -921,7 +957,8 @@
       "УЗПОУ-2",
       "подрядчик"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№8",
@@ -947,7 +984,8 @@
       "переключение ГПА",
       "температура газа"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№10",
@@ -973,7 +1011,8 @@
       "AUMATIC",
       "Anti-Surge Isolation Valve"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": false
   },
   {
     "act": "№10",
@@ -999,7 +1038,8 @@
       "AUMATIC",
       "повторный отказ"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": false
   },
   {
     "act": "№1",
@@ -1025,7 +1065,8 @@
       "ошибка 1452",
       "PCC3300"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№2",
@@ -1051,7 +1092,8 @@
       "ошибка 2489",
       "свечи зажигания"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№3",
@@ -1077,7 +1119,8 @@
       "Engineering WorkPlace",
       "детекторы пламени"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№4",
@@ -1103,7 +1146,8 @@
       "сервопривод",
       "IS200TSVCH1A"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№5",
@@ -1130,7 +1174,8 @@
       "ошибка 1452",
       "реле KV1"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№6",
@@ -1156,7 +1201,8 @@
       "ТВ22",
       "ESD II"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№7",
@@ -1183,7 +1229,8 @@
       "PT080302",
       "FSP080101"
     ],
-    "year": 2025
+    "year": 2025,
+    "venting_occurred": null
   },
   {
     "act": "№1",
@@ -1210,7 +1257,8 @@
       "ESD-II",
       "CO2"
     ],
-    "year": 2024
+    "year": 2024,
+    "venting_occurred": true
   },
   {
     "act": "№2",
@@ -1237,6 +1285,7 @@
       "A36",
       "частотный преобразователь"
     ],
-    "year": 2024
+    "year": 2024,
+    "venting_occurred": true
   }
 ]

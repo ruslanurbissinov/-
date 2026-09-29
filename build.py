@@ -364,8 +364,8 @@ var I18N = {{
     showDetails:'Показать меры и заключение &#9662;', hideDetails:'Скрыть детали &#9652;',
     conclusion:'Заключение:', measuresTaken:'Принятые меры (немедленные):',
     tabInvestigation:'Акт расследования', tabWorkOrder:'Акт выполненных работ', tabVenting:'Объём газа', tabReports:'Донесения',
-    statusInvestigation:'На стадии расследования', statusClosed:'Расследование завершено',
-    statusLegend:'Цвет карточки: <span class="tag status-investigation" style="margin:0 4px;">жёлтый</span> — случай на стадии расследования, статус ещё не закрыт.',
+    statusInvestigation:'На стадии расследования (акт не загружен)', statusClosed:'Акт технического расследования загружен',
+    statusLegend:'Цвет карточки: <span class="tag status-investigation" style="margin:0 4px;">жёлтый</span> — акт технического расследования ещё не загружен, случай на стадии расследования. После загрузки акта карточка становится белой.',
     noReports:'Донесения по этому случаю пока не загружены.',
     reportsAutoDigitizeNote:'Загруженные файлы донесений (PDF/Word) сохраняются как приложение к карточке. Автоматическая «цифровка» — распознавание текста и заполнение полей ИИ без участия человека — требует серверного OCR/ИИ-сервиса и в текущей статической архитектуре платформы не реализована; это отдельная задача для бэкенда (см. ТЗ).',
     openReportFile:'Открыть файл донесения',
@@ -386,6 +386,9 @@ var I18N = {{
     damagedEquip:'Повреждённое оборудование:', noWorkOrder:'Отдельный акт выполненных работ по этому случаю не оформлялся — устранение выполнено в рамках немедленных мер (см. вкладку «Акт расследования»).',
     ventedVolume:'Объём стравленного газа:', ventedPressureBefore:'Давление до стравливания:', ventedPressureAfter:'Давление после стравливания:', ventedContour:'Стравленный контур:',
     noVentingAct:'Данные об объёме стравленного газа не зафиксированы в акте технического расследования по этому случаю.', ventedSource:'Данные приведены по акту технического расследования:', openVentingAct:'Открыть акт расследования',
+    ventingLabel:'Стравливание газа из контура ГПА при останове:', ventingYes:'Да', ventingNo:'Нет',
+    ventingUnknown:'Не указано в акте — требуется уточнение по первичному документу технического расследования.',
+    ventingNote:'Согласно акту технического расследования, при останове произошёл сброс давления/стравливание газа из контура ГПА. Точный объём (м³) в стандартной форме акта не фиксируется.',
     exactTime:'Время:',
     aiTitle:'&#129302; AI Анализ', aiProbableCause:'Вероятная причина', aiConfidence:'Уверенность',
     aiBasis:'Основание', aiWhatToCheck:'Что проверить', aiDocs:'Документы', aiPrevention:'Профилактика',
@@ -396,7 +399,7 @@ var I18N = {{
     dashStatTopGpa:'Чаще всего останавливался', dashStatTopCat:'Самая частая причина', times:'раз',
     statHintAll:'Показать все случаи в поиске &rarr;', statHintFilter:'Показать случаи в поиске &rarr;',
     minShort:'мин', hourShort:'ч', dayShort:'сут',
-    dashDowntimeTitle:'&#9201; Время простоя агрегата',
+    dashDowntimeTitle:'&#9201; Время состояние ГПА вне резерва',
     dashDowntimeEmpty:'Время простоя не зафиксировано отдельно ни в одном акте — это поле (downtime_min) можно постепенно заполнять по мере уточнения актов, и блок начнёт считать статистику автоматически.',
     dashDowntimeCoverage:'Известно для {n} из {total} случаев (по данным актов) &middot; остальные ещё предстоит уточнить',
     dashDowntimeAvg:'Среднее время простоя', dashDowntimeMedian:'Медианное время простоя', dashDowntimeMax:'Самый долгий простой',
@@ -465,8 +468,8 @@ var I18N = {{
     showDetails:'Show measures &amp; conclusion &#9662;', hideDetails:'Hide details &#9652;',
     conclusion:'Conclusion:', measuresTaken:'Immediate measures taken:',
     tabInvestigation:'Investigation report', tabWorkOrder:'Completion report', tabVenting:'Gas volume', tabReports:'Reports',
-    statusInvestigation:'Under investigation', statusClosed:'Investigation closed',
-    statusLegend:'Card color: <span class="tag status-investigation" style="margin:0 4px;">yellow</span> — case is under investigation, status not yet closed.',
+    statusInvestigation:'Under investigation (report not uploaded)', statusClosed:'Investigation report uploaded',
+    statusLegend:'Card color: <span class="tag status-investigation" style="margin:0 4px;">yellow</span> — the investigation report has not been uploaded yet, case is under investigation. Once the report is uploaded, the card turns white.',
     noReports:'No report files have been uploaded for this case yet.',
     reportsAutoDigitizeNote:'Uploaded report files (PDF/Word) are stored as attachments to the card. Fully automatic "digitization" — OCR/AI extraction of fields without human review — requires a server-side OCR/AI service and is not implemented in the current static-site architecture; it is a separate backend task (see the technical specification).',
     openReportFile:'Open report file',
@@ -487,6 +490,9 @@ var I18N = {{
     damagedEquip:'Damaged equipment:', noWorkOrder:'No separate completion report was filed for this case — the fix was carried out as part of the immediate measures (see the "Investigation report" tab).',
     ventedVolume:'Vented gas volume:', ventedPressureBefore:'Pressure before venting:', ventedPressureAfter:'Pressure after venting:', ventedContour:'Vented circuit:',
     noVentingAct:'Vented gas volume data is not recorded in the investigation report for this case.', ventedSource:'Data taken from the investigation report:', openVentingAct:'Open investigation report',
+    ventingLabel:'Gas vented from the GCU circuit on shutdown:', ventingYes:'Yes', ventingNo:'No',
+    ventingUnknown:'Not stated in the report — check the original investigation act.',
+    ventingNote:'Per the investigation act, pressure/gas was released from the GCU circuit on shutdown. The standard act form does not record an exact volume (m³).',
     exactTime:'Time:',
     aiTitle:'&#129302; AI Analysis', aiProbableCause:'Probable cause', aiConfidence:'Confidence',
     aiBasis:'Basis', aiWhatToCheck:'What to check', aiDocs:'Documents', aiPrevention:'Prevention',
@@ -497,7 +503,7 @@ var I18N = {{
     dashStatTopGpa:'Most frequently down', dashStatTopCat:'Most common cause', times:'times',
     statHintAll:'Show all cases in search &rarr;', statHintFilter:'Show cases in search &rarr;',
     minShort:'min', hourShort:'h', dayShort:'d',
-    dashDowntimeTitle:'&#9201; Unit downtime',
+    dashDowntimeTitle:'&#9201; GCU time outside reserve',
     dashDowntimeEmpty:'Downtime is not recorded separately in any act yet — fill in this field (downtime_min) gradually as acts are reviewed, and this block will start computing stats automatically.',
     dashDowntimeCoverage:'Known for {n} of {total} cases (per act records) &middot; the rest still need to be clarified',
     dashDowntimeAvg:'Average downtime', dashDowntimeMedian:'Median downtime', dashDowntimeMax:'Longest downtime',
@@ -791,7 +797,7 @@ function incidentRiskItems(inc) {{
 }}
 function buildCard(inc, tokens, scoreBadge) {{
   var card = document.createElement('div');
-  var isInvestigation = inc.status === 'investigation';
+  var isInvestigation = !inc.source;
   card.className = 'card' + (isInvestigation ? ' status-investigation' : '');
   var gpaTags = '';
   for (var g=0;g<inc.gpa.length;g++) {{ gpaTags += '<span class="tag gpa">'+escapeHtml(trGpa(inc.gpa[g]))+'</span>'; }}
@@ -828,13 +834,6 @@ function buildCard(inc, tokens, scoreBadge) {{
   htmlStr += '<div class="details">';
 
   var hasWork = inc.remediation && inc.remediation.length > 0;
-  var vent = inc.venting || null;
-  var hasVenting = !!(vent && (
-    (vent.volume_m3 !== undefined && vent.volume_m3 !== null) ||
-    vent.contour ||
-    (vent.pressure_before_mpa !== undefined && vent.pressure_before_mpa !== null) ||
-    (vent.pressure_after_mpa !== undefined && vent.pressure_after_mpa !== null)
-  ));
 
   htmlStr += '<div class="card-subtabs">';
   htmlStr += '<button class="subtab-btn active" type="button" data-tab="inv">'+T('tabInvestigation')+'</button>';
@@ -855,17 +854,6 @@ function buildCard(inc, tokens, scoreBadge) {{
   }}
   if (inc.damaged && inc.damaged !== 'Отсутствуют' && inc.damaged !== 'Отсутствует' && inc.damaged !== 'Не обнаружено') {{
     htmlStr += '<p><b>'+T('damagedEquip')+'</b> '+highlight(inc.damaged, tokens)+'</p>';
-  }}
-  var modelVal = getModelFor(inc.station, (inc.gpa||[])[0]);
-  htmlStr += '<p><b>'+T('modelLabel')+'</b> '+(modelVal ? escapeHtml(modelVal) : '<i style="color:var(--text-muted);">'+T('modelUnknown')+'</i>')+'</p>';
-  if (inc.reserve_downtime_min !== undefined && inc.reserve_downtime_min !== null) {{
-    htmlStr += '<p><b>'+T('reserveDowntimeLabel')+'</b> '+formatDuration(inc.reserve_downtime_min)+'</p>';
-  }} else {{
-    htmlStr += '<p><b>'+T('reserveDowntimeLabel')+'</b> <i style="color:var(--text-muted);">'+T('reserveDowntimeNote')+'</i></p>';
-  }}
-  if (inc.kind==='incident') {{
-    var reduction = (inc.remediation && inc.remediation.length) ? 'riskReductionHigh' : (inc.recommendation ? 'riskReductionMedium' : 'riskReductionLow');
-    htmlStr += '<p><b>'+T('riskReductionLabel')+'</b> '+T(reduction)+'</p>';
   }}
   var invDocs = [];
   if (inc.source) {{ invDocs.push('<a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">'+T('openInvestigationAct')+'</a>'); }}
@@ -905,24 +893,15 @@ function buildCard(inc, tokens, scoreBadge) {{
     htmlStr += '</div>';
   }}
 
-  // --- Gas volume pane (данные берутся из акта технического расследования) ---
+  // --- Gas venting pane (факт стравливания контура ГПА по данным акта техрасследования) ---
   htmlStr += '<div class="subtab-pane" data-pane="vent" style="display:none;">';
-  if (!hasVenting) {{
-    htmlStr += '<p style="color:var(--text-muted);">'+T('noVentingAct')+'</p>';
+  if (inc.venting_occurred === true) {{
+    htmlStr += '<p><b>'+T('ventingLabel')+'</b> <span class="tag" style="background:#FDEDEA;color:#B3261E;">'+T('ventingYes')+'</span></p>';
+    htmlStr += '<p style="color:var(--text-muted);">'+T('ventingNote')+'</p>';
+  }} else if (inc.venting_occurred === false) {{
+    htmlStr += '<p><b>'+T('ventingLabel')+'</b> <span class="tag" style="background:#E8F3EC;color:#1E7A3D;">'+T('ventingNo')+'</span></p>';
   }} else {{
-    if (vent.volume_m3 !== undefined && vent.volume_m3 !== null) {{
-      htmlStr += '<p><b>'+T('ventedVolume')+'</b> '+escapeHtml(String(vent.volume_m3))+' &#1084;&sup3;</p>';
-    }}
-    if (vent.contour) {{ htmlStr += '<p><b>'+T('ventedContour')+'</b> '+highlight(vent.contour, tokens)+'</p>'; }}
-    if (vent.pressure_before_mpa !== undefined && vent.pressure_before_mpa !== null) {{
-      htmlStr += '<p><b>'+T('ventedPressureBefore')+'</b> '+escapeHtml(String(vent.pressure_before_mpa))+' &#1052;&#1055;&#1072;</p>';
-    }}
-    if (vent.pressure_after_mpa !== undefined && vent.pressure_after_mpa !== null) {{
-      htmlStr += '<p><b>'+T('ventedPressureAfter')+'</b> '+escapeHtml(String(vent.pressure_after_mpa))+' &#1052;&#1055;&#1072;</p>';
-    }}
-    if (inc.source) {{
-      htmlStr += '<p><b>'+T('ventedSource')+'</b> <a class="doc-link" href="'+encodeURIComponent(inc.source)+'" target="_blank">'+T('openVentingAct')+'</a></p>';
-    }}
+    htmlStr += '<p><b>'+T('ventingLabel')+'</b> <i style="color:var(--text-muted);">'+T('ventingUnknown')+'</i></p>';
   }}
   htmlStr += '</div>';
 
@@ -964,10 +943,14 @@ function buildCard(inc, tokens, scoreBadge) {{
   return card;
 }}
 
+function incidentKey(inc) {{
+  return (inc.station||'')+'|'+(inc.act||'')+'|'+(inc.date||'')+'|'+(inc.time||'');
+}}
 function buildRow(inc, tokens, scoreBadge) {{
-  var isInvestigation = inc.status === 'investigation';
+  var isInvestigation = !inc.source;
   var tr = document.createElement('tr');
   tr.className = 'reg-row-main' + (isInvestigation ? ' status-investigation' : '');
+  tr.setAttribute('data-inc-key', incidentKey(inc));
   var statusBadge = inc.kind==='incident'
     ? '<span class="tag '+(isInvestigation?'status-investigation':'status-closed')+'">'+(isInvestigation?T('statusInvestigation'):T('statusClosed'))+'</span>'
     : '';
@@ -1840,7 +1823,7 @@ function downtimeBlockHtml(stats) {{
   html += '<div style="font-size:12.5px;font-weight:700;color:var(--navy);margin:14px 0 8px;">'+T('dashDowntimeLongest')+'</div>';
   for (var j=0;j<stats.longest.length;j++) {{
     var r = stats.longest[j];
-    html += '<div class="reg-row clickable" data-query-text="'+escapeHtml(r.name)+'"><div class="reg-cat">'+escapeHtml(r.act)+' &middot; '+escapeHtml(trGpa(r.gpa[0]))+' &middot; '+escapeHtml(r.name)+'</div>' +
+    html += '<div class="reg-row clickable" data-goto-key="'+escapeHtml(incidentKey(r))+'"><div class="reg-cat">'+escapeHtml(r.act)+' &middot; '+escapeHtml(trGpa(r.gpa[0]))+' &middot; '+escapeHtml(r.name)+'</div>' +
       '<div class="reg-count">'+formatDuration(r.downtime_min)+'</div>' +
       '<div class="reg-dates">'+escapeHtml(r.date)+'</div></div>';
   }}
@@ -2189,8 +2172,34 @@ function goToFilteredSearch(filterKey, filterValue, filterKey2, filterValue2) {{
   render();
   document.getElementById('results').scrollIntoView({{behavior:'smooth', block:'start'}});
 }}
+function goToIncidentKey(key) {{
+  document.getElementById('q').value = '';
+  document.getElementById('fGpa').value = '';
+  document.getElementById('fCat').value = '';
+  document.getElementById('fYear').value = '';
+  document.getElementById('fType').value = '';
+  document.getElementById('fStation').value = '';
+  if (document.getElementById('fCompany')) document.getElementById('fCompany').value = '';
+  if (document.getElementById('fFilial')) document.getElementById('fFilial').value = '';
+  if (document.getElementById('fModel')) document.getElementById('fModel').value = '';
+  if (document.getElementById('fEquip')) document.getElementById('fEquip').value = '';
+  if (document.getElementById('fArchived')) document.getElementById('fArchived').checked = true;
+  switchTab('search');
+  render();
+  var tr = document.querySelector('.reg-row-main[data-inc-key="'+key.replace(/"/g,'\\\\"')+'"]');
+  if (tr) {{
+    tr.scrollIntoView({{behavior:'smooth', block:'center'}});
+    if (!/\bexpanded\b/.test(tr.className)) {{ tr.click(); }}
+    tr.style.transition = 'background 0.3s';
+    var prevBg = tr.style.background;
+    tr.style.background = '#FDF3D0';
+    setTimeout(function(){{ tr.style.background = prevBg; }}, 1600);
+  }} else {{
+    document.getElementById('results').scrollIntoView({{behavior:'smooth', block:'start'}});
+  }}
+}}
 function wireDashClicks(root) {{
-  var clickable = root.querySelectorAll('[data-filter-key], [data-reset-filters], [data-query-text]');
+  var clickable = root.querySelectorAll('[data-filter-key], [data-reset-filters], [data-query-text], [data-goto-key]');
   for (var i=0;i<clickable.length;i++) {{
     (function(el){{
       el.addEventListener('click', function(){{
@@ -2199,7 +2208,9 @@ function wireDashClicks(root) {{
         var key2 = el.getAttribute('data-filter-key2');
         var val2 = el.getAttribute('data-filter-value2');
         var qtext = el.getAttribute('data-query-text');
+        var gotoKey = el.getAttribute('data-goto-key');
         if (el.getAttribute('data-reset-filters')) {{ goToFilteredSearch(null, null); }}
+        else if (gotoKey) {{ goToIncidentKey(gotoKey); }}
         else if (qtext) {{ goToSearchQuery(qtext); }}
         else if (key && val) {{ goToFilteredSearch(key, val, key2, val2); }}
       }});
@@ -2225,7 +2236,7 @@ Promise.all([
       downtime_min: (typeof a.downtime_min === 'number' ? a.downtime_min : undefined),
       station: a.station||'', report_source: a.report_source||'',
       remediation:a.remediation||[], source:a.source, defect_source:a.defect_source, tags:a.tags||[],
-      venting: a.venting || null, status: a.status || 'closed',
+      venting_occurred: (typeof a.venting_occurred === 'boolean' ? a.venting_occurred : null), status: a.status || 'closed',
       reserve_downtime_min: (typeof a.reserve_downtime_min === 'number' ? a.reserve_downtime_min : undefined),
       report_files: a.report_files || []
     }});
