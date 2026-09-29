@@ -257,7 +257,7 @@ function getOrgFor(station) {
   return ORG[station] || {};
 }
 var LANG = 'ru';
-var BUILD_STAMP = '2026-09-29 16:40';
+var BUILD_STAMP = '2026-09-29 16:54';
 function FS(ru, en) { return LANG==='en' ? en : ru; }
 var CAT_EN = {
   'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
@@ -347,11 +347,11 @@ var I18N = {
     dashStatTopGpa:'Чаще всего останавливался', dashStatTopCat:'Самая частая причина', times:'раз',
     statHintAll:'Показать все случаи в поиске &rarr;', statHintFilter:'Показать случаи в поиске &rarr;',
     minShort:'мин', hourShort:'ч', dayShort:'сут',
-    dashDowntimeTitle:'&#9201; Время состояние ГПА вне резерва',
+    dashDowntimeTitle:'&#9201; Время состояния ГПА вне резерва',
     dashDowntimeEmpty:'Время простоя не зафиксировано отдельно ни в одном акте — это поле (downtime_min) можно постепенно заполнять по мере уточнения актов, и блок начнёт считать статистику автоматически.',
     dashDowntimeCoverage:'Известно для {n} из {total} случаев (по данным актов) &middot; остальные ещё предстоит уточнить',
     dashDowntimeAvg:'Среднее время простоя', dashDowntimeMedian:'Медианное время простоя', dashDowntimeMax:'Самый долгий простой',
-    dashDowntimeByGpa:'Среднее время простоя по агрегатам', dashDowntimeLongest:'Самые долгие простои',
+    dashDowntimeByGpa:'Среднее время состояния ГПА вне резерва', dashDowntimeLongest:'Самые долгие состоянии ГПА вне резерва',
     dashYearChart:'Динамика авто остановов по годам', dashByGpa:'Аварии по агрегатам (ГПА)',
     dashMonthChart:'Динамика авто остановов по месяцам &mdash; ', backToYears:'&larr; Назад к годам',
     clickYearHint:'Нажмите на год, чтобы посмотреть по месяцам',
