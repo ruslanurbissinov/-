@@ -252,12 +252,21 @@ function getModelFor(station, gpa) {
   if (!byStation) return null;
   return byStation[gpa] || null;
 }
+var GPA_HOURS = {"_comment": "Наработка агрегата (моточасы) по станции и номеру ГПА. Поле hours — суммарная наработка с начала эксплуатации или с последнего капитального/среднего ремонта (час), as_of — дата, на которую указано значение (ДД.ММ.ГГГГ). В исходных актах расследования наработка ГПА не указывается системно (встречается только в донесениях по отдельным случаям), поэтому значения здесь не выдуманы — заполните по данным вахтенного журнала/СКАДА по факту и пересоберите build.py: дашборд «Прогноз рисков» автоматически подсветит агрегат с наибольшей наработкой и напомнит о межремонтном ТО.", "КС-1 «Алимтау»": {"ГПА №1": {"hours": null, "as_of": null}, "ГПА №2": {"hours": null, "as_of": null}, "ГПА №3": {"hours": null, "as_of": null}}, "КС-2 «Кереит»": {"ГПА №1": {"hours": null, "as_of": null}, "ГПА №2": {"hours": null, "as_of": null}, "ГПА №3": {"hours": null, "as_of": null}}, "СКС-2 «Аксу»": {"ГПА №1": {"hours": null, "as_of": null}, "ГПА №2": {"hours": null, "as_of": null}, "ГПА №3": {"hours": null, "as_of": null}}};
+function getHoursFor(station, gpa) {
+  if (!station || !gpa) return null;
+  var byStation = GPA_HOURS[station];
+  if (!byStation) return null;
+  var rec = byStation[gpa];
+  if (!rec || typeof rec.hours !== 'number') return null;
+  return rec;
+}
 var ORG = {"_comment": "Справочник «станция -> компания/филиал» для колонок «Компания» и «Филиал» в таблице поиска. Компания указана по уже подтверждённым документам проекта (устав, паспорт). Филиал (например, конкретное ЛПУ/УМГ) в актах расследования не указывался — заполните по факту и пересоберите build.py, значения подтянутся автоматически.", "КС-1 «Алимтау»": {"company": "АО «НК «QazaqGaz»", "filial": null}, "КС-2 «Кереит»": {"company": "АО «НК «QazaqGaz»", "filial": null}, "СКС-2 «Аксу»": {"company": "АО «НК «QazaqGaz»", "filial": null}};
 function getOrgFor(station) {
   return ORG[station] || {};
 }
 var LANG = 'ru';
-var BUILD_STAMP = '2026-09-29 16:54';
+var BUILD_STAMP = '2026-09-29 17:14';
 function FS(ru, en) { return LANG==='en' ? en : ru; }
 var CAT_EN = {
   'Внешняя/неподтвержденная причина':'External / unconfirmed cause',
@@ -379,6 +388,14 @@ var I18N = {
     dashRiskHowText:'это статистическая эвристика (частота + давность последнего случая + тренд за 2 года), а не обученная ML-модель — на 30 наблюдениях полноценное машинное обучение будет либо переобучаться, либо гадать. Используйте как ориентир для приоритизации осмотров, не как замену технической диагностики.',
     dashRiskScoring:'Риск-скоринг агрегатов', riskHigh:'Высокий', riskMedium:'Средний', riskLow:'Низкий',
     dashRiskDetail:'Детализация по агрегатам', riskProbableCause:'вероятная причина:',
+    dashHoursTitle:'Риск-скоринг ГПА',
+    dashHoursEmpty:'Наработка агрегатов (моточасы) не внесена ни по одному ГПА — заполните поле hours (и дату as_of) в gpa_hours.json по данным вахтенного журнала/СКАДА и пересоберите сайт: здесь автоматически появится агрегат с наибольшей наработкой и рекомендация по ТО.',
+    dashHoursCoverage:'Известно для {n} из {total} агрегатов &middot; остальные ещё предстоит уточнить',
+    dashHoursTopLabel:'Больше всех наработал:', dashHoursAsOf:'по состоянию на',
+    dashHoursWarn:'Рекомендуется провести межремонтное ТО в ближайшее время:',
+    dashHoursChecklist:'протяжка клеммных коробок (JB); протяжка болтовых соединений; проверка измерительных приборов; доливка технологических жидкостей при необходимости.',
+    dashHoursAfterNote:'После выполнения ТО обновите значение hours (обнулите или укажите наработку после ТО) и дату as_of в gpa_hours.json — приоритет автоматически перейдёт на агрегат со следующей по величине наработкой.',
+    dashHoursUnit:'ч',
     riskStopAgo:'останов', riskDaysAgo:'дн. назад', riskAvgInterval:'ср. интервал', riskDays:'дн.',
     dashForecastTitle:'Прогноз срока следующего останова (по всей КС)',
     forecastAvgLabel:'Средний интервал между авариями за весь период:',
@@ -483,6 +500,14 @@ var I18N = {
     dashRiskHowText:'this is a statistical heuristic (frequency + recency of last case + 2-year trend), not a trained ML model — with only 30 observations, a real machine-learning model would either overfit or just guess the majority class. Use it as a prioritization aid, not a substitute for technical diagnostics.',
     dashRiskScoring:'Unit risk scoring', riskHigh:'High', riskMedium:'Medium', riskLow:'Low',
     dashRiskDetail:'Per-unit detail', riskProbableCause:'likely cause:',
+    dashHoursTitle:'GCU risk scoring',
+    dashHoursEmpty:'Running hours (engine hours) are not entered for any GCU yet — fill in the hours field (and the as_of date) in gpa_hours.json from watch-log/SCADA data and rebuild the site: the unit with the most hours and a maintenance recommendation will appear here automatically.',
+    dashHoursCoverage:'Known for {n} of {total} units &middot; the rest still need to be clarified',
+    dashHoursTopLabel:'Most hours run:', dashHoursAsOf:'as of',
+    dashHoursWarn:'Inter-repair maintenance is recommended soon:',
+    dashHoursChecklist:'tighten junction boxes (JB); tighten bolted connections; check measuring instruments; top up process fluids if needed.',
+    dashHoursAfterNote:'After maintenance is done, update the hours value (reset it or enter the post-maintenance reading) and the as_of date in gpa_hours.json — priority will automatically move to the unit with the next-highest running hours.',
+    dashHoursUnit:'h',
     riskStopAgo:'last shutdown', riskDaysAgo:'days ago', riskAvgInterval:'avg. interval', riskDays:'days',
     dashForecastTitle:'Forecast: next expected shutdown (whole station)',
     forecastAvgLabel:'Average interval between shutdowns over the whole period:',
@@ -2009,7 +2034,54 @@ function riskForecastHtml(fc) {
       '<p class="rec-line">'+T('forecastSinceLabel')+' <b>'+fc.daysSinceGlobalLast+' '+T('riskDays')+'</b> — '+FS('это','which is')+' '+(overdue?T('forecastMore'):T('forecastLess'))+' '+FS('среднего интервала, вероятность нового останова','than the average interval — probability of a new shutdown is')+' '+(overdue?'<b>'+T('forecastElevated')+'</b>':T('forecastNormal'))+'.</p>' +
       '</div>';
   }
+  html += hoursBlockHtml();
   return html;
+}
+function computeHoursRanking() {
+  var items = [];
+  for (var station in GPA_HOURS) {
+    var byGpa = GPA_HOURS[station];
+    for (var gpa in byGpa) {
+      var rec = byGpa[gpa];
+      if (rec && typeof rec.hours === 'number') {
+        items.push({station: station, gpa: gpa, hours: rec.hours, as_of: rec.as_of || null});
+      }
+    }
+  }
+  items.sort(function(a,b){ return b.hours - a.hours; });
+  var total = 0;
+  for (var s in GPA_HOURS) { for (var g in GPA_HOURS[s]) { total++; } }
+  return {items: items, total: total};
+}
+function hoursBlockHtml() {
+  var rk = computeHoursRanking();
+  var html = '<div class="chart-card"><h4>'+T('dashHoursTitle')+'</h4>';
+  if (!rk.items.length) {
+    html += '<div style="color:var(--text-muted);font-size:13px;">'+T('dashHoursEmpty')+'</div></div>';
+    return html;
+  }
+  html += '<div class="chart-hint">'+T('dashHoursCoverage').replace('{n}', rk.items.length).replace('{total}', rk.total)+'</div>';
+  var maxVal = rk.items[0].hours;
+  for (var i=0;i<rk.items.length;i++) {
+    var it = rk.items[i];
+    var lbl = trGpa(it.gpa) + ' &middot; ' + trStation(it.station);
+    html += durationBarRowHours(lbl, it.hours, maxVal, i===0 ? 'var(--coral)' : 'var(--teal)');
+  }
+  var top = rk.items[0];
+  html += '<div class="info-callout" style="margin-top:12px;">' +
+    '<b>'+T('dashHoursTopLabel')+'</b> '+trGpa(top.gpa)+' &middot; '+escapeHtml(trStation(top.station))+' — '+Math.round(top.hours)+' '+T('dashHoursUnit') +
+    (top.as_of ? ' ('+T('dashHoursAsOf')+' '+escapeHtml(top.as_of)+')' : '') + '.<br>' +
+    '<b>'+T('dashHoursWarn')+'</b> '+T('dashHoursChecklist') + '<br>' +
+    '<span style="color:var(--text-muted);">'+T('dashHoursAfterNote')+'</span>' +
+    '</div>';
+  html += '</div>';
+  return html;
+}
+function durationBarRowHours(label, hours, maxVal, color) {
+  var pct = maxVal>0 ? Math.max(2, Math.round(100*hours/maxVal)) : 2;
+  return '<div class="bar-row"><div class="bar-label">'+label+'</div>' +
+    '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+color+';"></div></div>' +
+    '<div class="bar-val">'+Math.round(hours)+' '+T('dashHoursUnit')+'</div></div>';
 }
 function renderDashboard() {
   if (_dashRendered) return;

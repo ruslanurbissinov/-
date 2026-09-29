@@ -28,6 +28,7 @@ DEFECTS_FILE = BASE_DIR / 'defects.json'
 LIBRARY_FILE = BASE_DIR / 'library.json'
 MODELS_FILE = BASE_DIR / 'equipment_models.json'
 ORG_FILE = BASE_DIR / 'org_structure.json'
+HOURS_FILE = BASE_DIR / 'gpa_hours.json'
 XLSX_OUT = BASE_DIR / 'База_аварийных_остановов_ГПА.xlsx'
 HTML_OUT = BASE_DIR / 'Поиск_по_базе_аварий.html'
 
@@ -304,6 +305,15 @@ function getModelFor(station, gpa) {{
   if (!byStation) return null;
   return byStation[gpa] || null;
 }}
+var GPA_HOURS = {{}};
+function getHoursFor(station, gpa) {{
+  if (!station || !gpa) return null;
+  var byStation = GPA_HOURS[station];
+  if (!byStation) return null;
+  var rec = byStation[gpa];
+  if (!rec || typeof rec.hours !== 'number') return null;
+  return rec;
+}}
 var ORG = {{}};
 function getOrgFor(station) {{
   return ORG[station] || {{}};
@@ -431,6 +441,14 @@ var I18N = {{
     dashRiskHowText:'это статистическая эвристика (частота + давность последнего случая + тренд за 2 года), а не обученная ML-модель — на 30 наблюдениях полноценное машинное обучение будет либо переобучаться, либо гадать. Используйте как ориентир для приоритизации осмотров, не как замену технической диагностики.',
     dashRiskScoring:'Риск-скоринг агрегатов', riskHigh:'Высокий', riskMedium:'Средний', riskLow:'Низкий',
     dashRiskDetail:'Детализация по агрегатам', riskProbableCause:'вероятная причина:',
+    dashHoursTitle:'Риск-скоринг ГПА',
+    dashHoursEmpty:'Наработка агрегатов (моточасы) не внесена ни по одному ГПА — заполните поле hours (и дату as_of) в gpa_hours.json по данным вахтенного журнала/СКАДА и пересоберите сайт: здесь автоматически появится агрегат с наибольшей наработкой и рекомендация по ТО.',
+    dashHoursCoverage:'Известно для {n} из {total} агрегатов &middot; остальные ещё предстоит уточнить',
+    dashHoursTopLabel:'Больше всех наработал:', dashHoursAsOf:'по состоянию на',
+    dashHoursWarn:'Рекомендуется провести межремонтное ТО в ближайшее время:',
+    dashHoursChecklist:'протяжка клеммных коробок (JB); протяжка болтовых соединений; проверка измерительных приборов; доливка технологических жидкостей при необходимости.',
+    dashHoursAfterNote:'После выполнения ТО обновите значение hours (обнулите или укажите наработку после ТО) и дату as_of в gpa_hours.json — приоритет автоматически перейдёт на агрегат со следующей по величине наработкой.',
+    dashHoursUnit:'ч',
     riskStopAgo:'останов', riskDaysAgo:'дн. назад', riskAvgInterval:'ср. интервал', riskDays:'дн.',
     dashForecastTitle:'Прогноз срока следующего останова (по всей КС)',
     forecastAvgLabel:'Средний интервал между авариями за весь период:',
@@ -535,6 +553,14 @@ var I18N = {{
     dashRiskHowText:'this is a statistical heuristic (frequency + recency of last case + 2-year trend), not a trained ML model — with only 30 observations, a real machine-learning model would either overfit or just guess the majority class. Use it as a prioritization aid, not a substitute for technical diagnostics.',
     dashRiskScoring:'Unit risk scoring', riskHigh:'High', riskMedium:'Medium', riskLow:'Low',
     dashRiskDetail:'Per-unit detail', riskProbableCause:'likely cause:',
+    dashHoursTitle:'GCU risk scoring',
+    dashHoursEmpty:'Running hours (engine hours) are not entered for any GCU yet — fill in the hours field (and the as_of date) in gpa_hours.json from watch-log/SCADA data and rebuild the site: the unit with the most hours and a maintenance recommendation will appear here automatically.',
+    dashHoursCoverage:'Known for {n} of {total} units &middot; the rest still need to be clarified',
+    dashHoursTopLabel:'Most hours run:', dashHoursAsOf:'as of',
+    dashHoursWarn:'Inter-repair maintenance is recommended soon:',
+    dashHoursChecklist:'tighten junction boxes (JB); tighten bolted connections; check measuring instruments; top up process fluids if needed.',
+    dashHoursAfterNote:'After maintenance is done, update the hours value (reset it or enter the post-maintenance reading) and the as_of date in gpa_hours.json — priority will automatically move to the unit with the next-highest running hours.',
+    dashHoursUnit:'h',
     riskStopAgo:'last shutdown', riskDaysAgo:'days ago', riskAvgInterval:'avg. interval', riskDays:'days',
     dashForecastTitle:'Forecast: next expected shutdown (whole station)',
     forecastAvgLabel:'Average interval between shutdowns over the whole period:',
@@ -2061,7 +2087,54 @@ function riskForecastHtml(fc) {{
       '<p class="rec-line">'+T('forecastSinceLabel')+' <b>'+fc.daysSinceGlobalLast+' '+T('riskDays')+'</b> — '+FS('это','which is')+' '+(overdue?T('forecastMore'):T('forecastLess'))+' '+FS('среднего интервала, вероятность нового останова','than the average interval — probability of a new shutdown is')+' '+(overdue?'<b>'+T('forecastElevated')+'</b>':T('forecastNormal'))+'.</p>' +
       '</div>';
   }}
+  html += hoursBlockHtml();
   return html;
+}}
+function computeHoursRanking() {{
+  var items = [];
+  for (var station in GPA_HOURS) {{
+    var byGpa = GPA_HOURS[station];
+    for (var gpa in byGpa) {{
+      var rec = byGpa[gpa];
+      if (rec && typeof rec.hours === 'number') {{
+        items.push({{station: station, gpa: gpa, hours: rec.hours, as_of: rec.as_of || null}});
+      }}
+    }}
+  }}
+  items.sort(function(a,b){{ return b.hours - a.hours; }});
+  var total = 0;
+  for (var s in GPA_HOURS) {{ for (var g in GPA_HOURS[s]) {{ total++; }} }}
+  return {{items: items, total: total}};
+}}
+function hoursBlockHtml() {{
+  var rk = computeHoursRanking();
+  var html = '<div class="chart-card"><h4>'+T('dashHoursTitle')+'</h4>';
+  if (!rk.items.length) {{
+    html += '<div style="color:var(--text-muted);font-size:13px;">'+T('dashHoursEmpty')+'</div></div>';
+    return html;
+  }}
+  html += '<div class="chart-hint">'+T('dashHoursCoverage').replace('{{n}}', rk.items.length).replace('{{total}}', rk.total)+'</div>';
+  var maxVal = rk.items[0].hours;
+  for (var i=0;i<rk.items.length;i++) {{
+    var it = rk.items[i];
+    var lbl = trGpa(it.gpa) + ' &middot; ' + trStation(it.station);
+    html += durationBarRowHours(lbl, it.hours, maxVal, i===0 ? 'var(--coral)' : 'var(--teal)');
+  }}
+  var top = rk.items[0];
+  html += '<div class="info-callout" style="margin-top:12px;">' +
+    '<b>'+T('dashHoursTopLabel')+'</b> '+trGpa(top.gpa)+' &middot; '+escapeHtml(trStation(top.station))+' — '+Math.round(top.hours)+' '+T('dashHoursUnit') +
+    (top.as_of ? ' ('+T('dashHoursAsOf')+' '+escapeHtml(top.as_of)+')' : '') + '.<br>' +
+    '<b>'+T('dashHoursWarn')+'</b> '+T('dashHoursChecklist') + '<br>' +
+    '<span style="color:var(--text-muted);">'+T('dashHoursAfterNote')+'</span>' +
+    '</div>';
+  html += '</div>';
+  return html;
+}}
+function durationBarRowHours(label, hours, maxVal, color) {{
+  var pct = maxVal>0 ? Math.max(2, Math.round(100*hours/maxVal)) : 2;
+  return '<div class="bar-row"><div class="bar-label">'+label+'</div>' +
+    '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+color+';"></div></div>' +
+    '<div class="bar-val">'+Math.round(hours)+' '+T('dashHoursUnit')+'</div></div>';
 }}
 function renderDashboard() {{
   if (_dashRendered) return;
@@ -2281,6 +2354,11 @@ def build_web_site(incidents, defects, library, out_dir):
         "var ORG = {};",
         "var ORG = " + json.dumps(org_data, ensure_ascii=False) + ";"
     )
+    hours_data = load_gpa_hours()
+    fixed_html = fixed_html.replace(
+        "var GPA_HOURS = {};",
+        "var GPA_HOURS = " + json.dumps(hours_data, ensure_ascii=False) + ";"
+    )
     with open(out_dir / 'index.html', 'w', encoding='utf-8') as f:
         f.write(fixed_html)
 
@@ -2320,6 +2398,17 @@ def load_equipment_models():
     if not MODELS_FILE.exists():
         return {}
     with open(MODELS_FILE, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def load_gpa_hours():
+    """Справочник «станция -> ГПА -> наработка (моточасы)». В исходных актах
+    расследования наработка агрегата системно не фиксируется (встречается только
+    в отдельных донесениях), поэтому значения не выдумываются — только структура
+    для последующего заполнения по данным вахтенного журнала/СКАДА."""
+    if not HOURS_FILE.exists():
+        return {}
+    with open(HOURS_FILE, encoding='utf-8') as f:
         return json.load(f)
 
 
