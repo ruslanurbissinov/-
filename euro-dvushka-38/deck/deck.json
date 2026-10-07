@@ -1,0 +1,71 @@
+{
+ "v": 4,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-10-07T17:30:00Z"
+ },
+ "lists": "css",
+ "title": "Евродвушка 38,6 м² — дизайн-проект",
+ "order": [
+  "cover",
+  "brief",
+  "analysis",
+  "concept",
+  "existing",
+  "demolition",
+  "mounting",
+  "newplan",
+  "furniture",
+  "iso-overview",
+  "iso-living",
+  "iso-kitchen",
+  "iso-bedroom",
+  "iso-hall-bath",
+  "flythrough",
+  "storage",
+  "water",
+  "sewer",
+  "sockets",
+  "lighting",
+  "panel",
+  "finishes",
+  "sun-noise",
+  "budget",
+  "works",
+  "next"
+ ],
+ "cover": "cover",
+ "sections": {
+  "s1": {
+   "description": "Задача, анализ плана и концепция",
+   "start": "cover"
+  },
+  "s2": {
+   "description": "Перепланировка: обмер, демонтаж, монтаж, итоговый план, мебель",
+   "start": "existing"
+  },
+  "s3": {
+   "description": "3D-визуализация",
+   "start": "iso-overview"
+  },
+  "s4": {
+   "description": "Хранение и инженерные схемы",
+   "start": "storage"
+  },
+  "s5": {
+   "description": "Материалы, бюджет и этапы",
+   "start": "finishes"
+  }
+ },
+ "faces": {
+  "jost": {
+   "family": "Jost",
+   "href": "https://fonts.googleapis.com/css2?family=Jost:wght@300..600&display=swap"
+  },
+  "manrope": {
+   "family": "Manrope",
+   "href": "https://fonts.googleapis.com/css2?family=Manrope:wght@400..700&display=swap"
+  }
+ },
+ "designSystems": []
+}
