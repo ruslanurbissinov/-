@@ -291,8 +291,8 @@ def iso_svg(boxes, view, region, label, size=(1000, 760), back_pad=0.5, cut=1.0,
                 b[7] = 'wallcut' if b[7] == 'wall' else b[7]
         elif furn_cut is not None and b[7] == 'furn':
             back = b[3] <= cx0 + back_pad or b[4] <= cy0 + back_pad
-            if not back and b[2] >= furn_cut:
-                b[5] = b[2]
+            if not back:
+                b[5] = b[2] if b[2] >= furn_cut else min(b[5], furn_cut)
     rb = [b for b in rb if b[5] > b[2] + 1e-6]
 
     c30, s30 = math.cos(math.pi / 6), 0.5
